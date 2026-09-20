@@ -1,0 +1,39 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.example.pdfutilityapp-mergeDebugResources-54:/values-v31/values-v31.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\alokk\\.gradle\\caches\\8.14.3\\transforms\\ade4cebe0eb3024a22146efbcafbebf1\\transformed\\core-splashscreen-1.0.1\\res\\values-v31\\values-v31.xml",
+                    "from": {
+                        "startLines": "2,9",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,473",
+                        "endLines": "8,13",
+                        "endColumns": "12,12",
+                        "endOffsets": "468,697"
+                    },
+                    "to": {
+                        "startLines": "12,19",
+                        "startColumns": "4,4",
+                        "startOffsets": "745,1163",
+                        "endLines": "18,23",
+                        "endColumns": "12,12",
+                        "endOffsets": "1158,1387"
+                    }
+                },
+                {
+                    "source": "C:\\Users\\alokk\\Desktop\\Swift\\app\\src\\main\\res\\values-v31\\themes.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "11",
+                        "endColumns": "12",
+                        "endOffsets": "740"
+                    }
+                }
+            ]
+        }
+    ]
+}

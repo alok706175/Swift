@@ -1,0 +1,272 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.example.pdfutilityapp"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="34" />
+10
+11    <!-- Permissions for network image loading and file operations -->
+12    <uses-permission android:name="android.permission.INTERNET" />
+12-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:5:5-67
+12-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:5:22-64
+13    <uses-permission
+13-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:6:5-107
+14        android:name="android.permission.READ_EXTERNAL_STORAGE"
+14-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:6:22-77
+15        android:maxSdkVersion="32" />
+15-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:6:78-104
+16
+17    <permission
+17-->[androidx.core:core:1.13.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\55a04bf0b6c8f9f1fc0c6d477f3776f8\transformed\core-1.13.1\AndroidManifest.xml:22:5-24:47
+18        android:name="com.example.pdfutilityapp.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+18-->[androidx.core:core:1.13.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\55a04bf0b6c8f9f1fc0c6d477f3776f8\transformed\core-1.13.1\AndroidManifest.xml:23:9-81
+19        android:protectionLevel="signature" />
+19-->[androidx.core:core:1.13.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\55a04bf0b6c8f9f1fc0c6d477f3776f8\transformed\core-1.13.1\AndroidManifest.xml:24:9-44
+20
+21    <uses-permission android:name="com.example.pdfutilityapp.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" /> <!-- Although the *SdkVersion is captured in gradle build files, this is required for non gradle builds -->
+21-->[androidx.core:core:1.13.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\55a04bf0b6c8f9f1fc0c6d477f3776f8\transformed\core-1.13.1\AndroidManifest.xml:26:5-97
+21-->[androidx.core:core:1.13.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\55a04bf0b6c8f9f1fc0c6d477f3776f8\transformed\core-1.13.1\AndroidManifest.xml:26:22-94
+22    <!-- <uses-sdk android:minSdkVersion="14"/> -->
+23    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+23-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\alokk\.gradle\caches\8.14.3\transforms\e6e7f654faaae39ac9f13eee3b8ba74a\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:25:5-79
+23-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\alokk\.gradle\caches\8.14.3\transforms\e6e7f654faaae39ac9f13eee3b8ba74a\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:25:22-76
+24
+25    <application
+25-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:8:5-41:19
+26        android:name="com.example.pdfutilityapp.PDFUtilityApp"
+26-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:9:9-38
+27        android:allowBackup="true"
+27-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:10:9-35
+28        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+28-->[androidx.core:core:1.13.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\55a04bf0b6c8f9f1fc0c6d477f3776f8\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
+29        android:dataExtractionRules="@xml/data_extraction_rules"
+29-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:11:9-65
+30        android:debuggable="true"
+31        android:extractNativeLibs="false"
+32        android:fullBackupContent="@xml/backup_rules"
+32-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:12:9-54
+33        android:hardwareAccelerated="true"
+33-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:17:9-43
+34        android:icon="@mipmap/ic_launcher"
+34-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:13:9-43
+35        android:label="@string/app_name"
+35-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:14:9-41
+36        android:roundIcon="@mipmap/ic_launcher_round"
+36-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:15:9-54
+37        android:supportsRtl="true"
+37-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:16:9-35
+38        android:testOnly="true"
+39        android:theme="@style/Theme.PDFUtilityApp" >
+39-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:18:9-51
+40        <activity
+40-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:20:9-29:20
+41            android:name="com.example.pdfutilityapp.MainActivity"
+41-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:21:13-41
+42            android:exported="true"
+42-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:22:13-36
+43            android:label="@string/app_name"
+43-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:23:13-45
+44            android:theme="@style/Theme.PDFUtilityApp" >
+44-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:24:13-55
+45            <intent-filter>
+45-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:25:13-28:29
+46                <action android:name="android.intent.action.MAIN" />
+46-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:26:17-69
+46-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:26:25-66
+47
+48                <category android:name="android.intent.category.LAUNCHER" />
+48-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:27:17-77
+48-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:27:27-74
+49            </intent-filter>
+50        </activity>
+51
+52        <provider
+53            android:name="androidx.core.content.FileProvider"
+53-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:32:13-62
+54            android:authorities="com.example.pdfutilityapp.fileprovider"
+54-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:33:13-64
+55            android:exported="false"
+55-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:34:13-37
+56            android:grantUriPermissions="true" >
+56-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:35:13-47
+57            <meta-data
+57-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:36:13-38:54
+58                android:name="android.support.FILE_PROVIDER_PATHS"
+58-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:37:17-67
+59                android:resource="@xml/file_paths" />
+59-->C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:38:17-51
+60        </provider>
+61
+62        <!--
+63        This activity is an invisible delegate activity to start scanner activity
+64        and receive result, so it's unnecessary to support screen orientation and
+65        we can avoid any side effect from activity recreation in any case.
+66        -->
+67        <activity
+67-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b873955daa04501d988144cc91a8c3cf\transformed\play-services-mlkit-document-scanner-16.0.0\AndroidManifest.xml:15:9-21:20
+68            android:name="com.google.mlkit.vision.documentscanner.internal.GmsDocumentScanningDelegateActivity"
+68-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b873955daa04501d988144cc91a8c3cf\transformed\play-services-mlkit-document-scanner-16.0.0\AndroidManifest.xml:16:13-112
+69            android:exported="false"
+69-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b873955daa04501d988144cc91a8c3cf\transformed\play-services-mlkit-document-scanner-16.0.0\AndroidManifest.xml:17:13-37
+70            android:screenOrientation="portrait"
+70-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b873955daa04501d988144cc91a8c3cf\transformed\play-services-mlkit-document-scanner-16.0.0\AndroidManifest.xml:18:13-49
+71            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" >
+71-->[com.google.android.gms:play-services-mlkit-document-scanner:16.0.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b873955daa04501d988144cc91a8c3cf\transformed\play-services-mlkit-document-scanner-16.0.0\AndroidManifest.xml:19:13-77
+72        </activity>
+73
+74        <provider
+74-->[com.google.mlkit:common:18.11.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b0a238be9bf153db5f2dfc99a7cbbb1c\transformed\common-18.11.0\AndroidManifest.xml:9:9-13:38
+75            android:name="com.google.mlkit.common.internal.MlKitInitProvider"
+75-->[com.google.mlkit:common:18.11.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b0a238be9bf153db5f2dfc99a7cbbb1c\transformed\common-18.11.0\AndroidManifest.xml:10:13-78
+76            android:authorities="com.example.pdfutilityapp.mlkitinitprovider"
+76-->[com.google.mlkit:common:18.11.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b0a238be9bf153db5f2dfc99a7cbbb1c\transformed\common-18.11.0\AndroidManifest.xml:11:13-69
+77            android:exported="false"
+77-->[com.google.mlkit:common:18.11.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b0a238be9bf153db5f2dfc99a7cbbb1c\transformed\common-18.11.0\AndroidManifest.xml:12:13-37
+78            android:initOrder="99" />
+78-->[com.google.mlkit:common:18.11.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b0a238be9bf153db5f2dfc99a7cbbb1c\transformed\common-18.11.0\AndroidManifest.xml:13:13-35
+79
+80        <service
+80-->[com.google.mlkit:common:18.11.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b0a238be9bf153db5f2dfc99a7cbbb1c\transformed\common-18.11.0\AndroidManifest.xml:15:9-23:19
+81            android:name="com.google.mlkit.common.internal.MlKitComponentDiscoveryService"
+81-->[com.google.mlkit:common:18.11.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b0a238be9bf153db5f2dfc99a7cbbb1c\transformed\common-18.11.0\AndroidManifest.xml:16:13-91
+82            android:directBootAware="true"
+82-->[com.google.mlkit:common:18.11.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b0a238be9bf153db5f2dfc99a7cbbb1c\transformed\common-18.11.0\AndroidManifest.xml:17:13-43
+83            android:exported="false" >
+83-->[com.google.mlkit:common:18.11.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b0a238be9bf153db5f2dfc99a7cbbb1c\transformed\common-18.11.0\AndroidManifest.xml:18:13-37
+84            <meta-data
+84-->[com.google.mlkit:common:18.11.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b0a238be9bf153db5f2dfc99a7cbbb1c\transformed\common-18.11.0\AndroidManifest.xml:20:13-22:85
+85                android:name="com.google.firebase.components:com.google.mlkit.common.internal.CommonComponentRegistrar"
+85-->[com.google.mlkit:common:18.11.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b0a238be9bf153db5f2dfc99a7cbbb1c\transformed\common-18.11.0\AndroidManifest.xml:21:17-120
+86                android:value="com.google.firebase.components.ComponentRegistrar" />
+86-->[com.google.mlkit:common:18.11.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\b0a238be9bf153db5f2dfc99a7cbbb1c\transformed\common-18.11.0\AndroidManifest.xml:22:17-82
+87        </service>
+88
+89        <activity
+89-->[com.google.android.gms:play-services-base:18.5.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\c5786999d1604296dd7b71ddf45ab592\transformed\play-services-base-18.5.0\AndroidManifest.xml:5:9-173
+90            android:name="com.google.android.gms.common.api.GoogleApiActivity"
+90-->[com.google.android.gms:play-services-base:18.5.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\c5786999d1604296dd7b71ddf45ab592\transformed\play-services-base-18.5.0\AndroidManifest.xml:5:19-85
+91            android:exported="false"
+91-->[com.google.android.gms:play-services-base:18.5.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\c5786999d1604296dd7b71ddf45ab592\transformed\play-services-base-18.5.0\AndroidManifest.xml:5:146-170
+92            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+92-->[com.google.android.gms:play-services-base:18.5.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\c5786999d1604296dd7b71ddf45ab592\transformed\play-services-base-18.5.0\AndroidManifest.xml:5:86-145
+93
+94        <meta-data
+94-->[com.google.android.gms:play-services-basement:18.4.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\69e3213b13f3f7832f316d332b042c37\transformed\play-services-basement-18.4.0\AndroidManifest.xml:6:9-122
+95            android:name="com.google.android.gms.version"
+95-->[com.google.android.gms:play-services-basement:18.4.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\69e3213b13f3f7832f316d332b042c37\transformed\play-services-basement-18.4.0\AndroidManifest.xml:6:20-65
+96            android:value="@integer/google_play_services_version" />
+96-->[com.google.android.gms:play-services-basement:18.4.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\69e3213b13f3f7832f316d332b042c37\transformed\play-services-basement-18.4.0\AndroidManifest.xml:6:66-119
+97
+98        <activity
+98-->[androidx.compose.ui:ui-tooling-android:1.6.8] C:\Users\alokk\.gradle\caches\8.14.3\transforms\ecd2543a52725dedd20534cf3316afca\transformed\ui-tooling-release\AndroidManifest.xml:23:9-25:39
+99            android:name="androidx.compose.ui.tooling.PreviewActivity"
+99-->[androidx.compose.ui:ui-tooling-android:1.6.8] C:\Users\alokk\.gradle\caches\8.14.3\transforms\ecd2543a52725dedd20534cf3316afca\transformed\ui-tooling-release\AndroidManifest.xml:24:13-71
+100            android:exported="true" />
+100-->[androidx.compose.ui:ui-tooling-android:1.6.8] C:\Users\alokk\.gradle\caches\8.14.3\transforms\ecd2543a52725dedd20534cf3316afca\transformed\ui-tooling-release\AndroidManifest.xml:25:13-36
+101        <activity
+101-->[androidx.compose.ui:ui-test-manifest:1.6.8] C:\Users\alokk\.gradle\caches\8.14.3\transforms\f6606911dd3d063297f8aaf8422e4416\transformed\ui-test-manifest-1.6.8\AndroidManifest.xml:23:9-25:39
+102            android:name="androidx.activity.ComponentActivity"
+102-->[androidx.compose.ui:ui-test-manifest:1.6.8] C:\Users\alokk\.gradle\caches\8.14.3\transforms\f6606911dd3d063297f8aaf8422e4416\transformed\ui-test-manifest-1.6.8\AndroidManifest.xml:24:13-63
+103            android:exported="true" />
+103-->[androidx.compose.ui:ui-test-manifest:1.6.8] C:\Users\alokk\.gradle\caches\8.14.3\transforms\f6606911dd3d063297f8aaf8422e4416\transformed\ui-test-manifest-1.6.8\AndroidManifest.xml:25:13-36
+104
+105        <provider
+105-->[androidx.emoji2:emoji2:1.3.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\293829f0f9c387174641de859900bff6\transformed\emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
+106            android:name="androidx.startup.InitializationProvider"
+106-->[androidx.emoji2:emoji2:1.3.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\293829f0f9c387174641de859900bff6\transformed\emoji2-1.3.0\AndroidManifest.xml:25:13-67
+107            android:authorities="com.example.pdfutilityapp.androidx-startup"
+107-->[androidx.emoji2:emoji2:1.3.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\293829f0f9c387174641de859900bff6\transformed\emoji2-1.3.0\AndroidManifest.xml:26:13-68
+108            android:exported="false" >
+108-->[androidx.emoji2:emoji2:1.3.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\293829f0f9c387174641de859900bff6\transformed\emoji2-1.3.0\AndroidManifest.xml:27:13-37
+109            <meta-data
+109-->[androidx.emoji2:emoji2:1.3.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\293829f0f9c387174641de859900bff6\transformed\emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
+110                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+110-->[androidx.emoji2:emoji2:1.3.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\293829f0f9c387174641de859900bff6\transformed\emoji2-1.3.0\AndroidManifest.xml:30:17-75
+111                android:value="androidx.startup" />
+111-->[androidx.emoji2:emoji2:1.3.0] C:\Users\alokk\.gradle\caches\8.14.3\transforms\293829f0f9c387174641de859900bff6\transformed\emoji2-1.3.0\AndroidManifest.xml:31:17-49
+112            <meta-data
+112-->[androidx.lifecycle:lifecycle-process:2.8.4] C:\Users\alokk\.gradle\caches\8.14.3\transforms\5cd2f1077dd681cb8066e357bfc28d6a\transformed\lifecycle-process-2.8.4\AndroidManifest.xml:29:13-31:52
+113                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+113-->[androidx.lifecycle:lifecycle-process:2.8.4] C:\Users\alokk\.gradle\caches\8.14.3\transforms\5cd2f1077dd681cb8066e357bfc28d6a\transformed\lifecycle-process-2.8.4\AndroidManifest.xml:30:17-78
+114                android:value="androidx.startup" />
+114-->[androidx.lifecycle:lifecycle-process:2.8.4] C:\Users\alokk\.gradle\caches\8.14.3\transforms\5cd2f1077dd681cb8066e357bfc28d6a\transformed\lifecycle-process-2.8.4\AndroidManifest.xml:31:17-49
+115            <meta-data
+115-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
+116                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+116-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
+117                android:value="androidx.startup" />
+117-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
+118        </provider>
+119
+120        <service
+120-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\alokk\.gradle\caches\8.14.3\transforms\e6e7f654faaae39ac9f13eee3b8ba74a\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:29:9-35:19
+121            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
+121-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\alokk\.gradle\caches\8.14.3\transforms\e6e7f654faaae39ac9f13eee3b8ba74a\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:30:13-103
+122            android:exported="false" >
+122-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\alokk\.gradle\caches\8.14.3\transforms\e6e7f654faaae39ac9f13eee3b8ba74a\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:31:13-37
+123            <meta-data
+123-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\alokk\.gradle\caches\8.14.3\transforms\e6e7f654faaae39ac9f13eee3b8ba74a\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:32:13-34:39
+124                android:name="backend:com.google.android.datatransport.cct.CctBackendFactory"
+124-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\alokk\.gradle\caches\8.14.3\transforms\e6e7f654faaae39ac9f13eee3b8ba74a\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:33:17-94
+125                android:value="cct" />
+125-->[com.google.android.datatransport:transport-backend-cct:2.3.3] C:\Users\alokk\.gradle\caches\8.14.3\transforms\e6e7f654faaae39ac9f13eee3b8ba74a\transformed\transport-backend-cct-2.3.3\AndroidManifest.xml:34:17-36
+126        </service>
+127        <service
+127-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\alokk\.gradle\caches\8.14.3\transforms\bd98be724fae2f63fe9ce55c1d7f781e\transformed\transport-runtime-2.2.6\AndroidManifest.xml:26:9-30:19
+128            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"
+128-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\alokk\.gradle\caches\8.14.3\transforms\bd98be724fae2f63fe9ce55c1d7f781e\transformed\transport-runtime-2.2.6\AndroidManifest.xml:27:13-117
+129            android:exported="false"
+129-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\alokk\.gradle\caches\8.14.3\transforms\bd98be724fae2f63fe9ce55c1d7f781e\transformed\transport-runtime-2.2.6\AndroidManifest.xml:28:13-37
+130            android:permission="android.permission.BIND_JOB_SERVICE" >
+130-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\alokk\.gradle\caches\8.14.3\transforms\bd98be724fae2f63fe9ce55c1d7f781e\transformed\transport-runtime-2.2.6\AndroidManifest.xml:29:13-69
+131        </service>
+132
+133        <receiver
+133-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\alokk\.gradle\caches\8.14.3\transforms\bd98be724fae2f63fe9ce55c1d7f781e\transformed\transport-runtime-2.2.6\AndroidManifest.xml:32:9-34:40
+134            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
+134-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\alokk\.gradle\caches\8.14.3\transforms\bd98be724fae2f63fe9ce55c1d7f781e\transformed\transport-runtime-2.2.6\AndroidManifest.xml:33:13-132
+135            android:exported="false" />
+135-->[com.google.android.datatransport:transport-runtime:2.2.6] C:\Users\alokk\.gradle\caches\8.14.3\transforms\bd98be724fae2f63fe9ce55c1d7f781e\transformed\transport-runtime-2.2.6\AndroidManifest.xml:34:13-37
+136        <receiver
+136-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
+137            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+137-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
+138            android:directBootAware="false"
+138-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
+139            android:enabled="true"
+139-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
+140            android:exported="true"
+140-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
+141            android:permission="android.permission.DUMP" >
+141-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
+142            <intent-filter>
+142-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
+143                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+143-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
+143-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
+144            </intent-filter>
+145            <intent-filter>
+145-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
+146                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+146-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
+146-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
+147            </intent-filter>
+148            <intent-filter>
+148-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
+149                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+149-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
+149-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
+150            </intent-filter>
+151            <intent-filter>
+151-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
+152                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+152-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
+152-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\alokk\.gradle\caches\8.14.3\transforms\8b237b3cc0ba6046cfb883a45a919d79\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
+153            </intent-filter>
+154        </receiver>
+155    </application>
+156
+157</manifest>

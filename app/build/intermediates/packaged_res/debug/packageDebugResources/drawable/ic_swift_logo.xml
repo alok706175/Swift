@@ -1,0 +1,46 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Stroke 1: Large Upper Wing -->
+    <path
+        android:pathData="M 36,56 C 68,30 122,24 166,38"
+        android:strokeColor="#FF6B4A"
+        android:strokeWidth="9.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Stroke 2: Second Thinner Upper Wing -->
+    <path
+        android:pathData="M 54,76 C 80,54 124,48 152,62"
+        android:strokeColor="#FF6B4A"
+        android:strokeWidth="6.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Stroke 3: Central Body & 'S' Movement -->
+    <path
+        android:pathData="M 42,116 C 68,98 98,76 126,84 C 142,90 158,102 164,92"
+        android:strokeColor="#FF6B4A"
+        android:strokeWidth="8.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Stroke 4: Lower Wing / Tail -->
+    <path
+        android:pathData="M 78,126 C 62,148 44,162 28,168"
+        android:strokeColor="#FF6B4A"
+        android:strokeWidth="8.0"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Stroke 5: Sleek Head & Beak -->
+    <path
+        android:pathData="M 154,74 Q 174,66 182,56"
+        android:strokeColor="#FF6B4A"
+        android:strokeWidth="7.0"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
