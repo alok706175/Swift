@@ -33,6 +33,7 @@ string image_preview
 string pdf_created_success
 string recent_documents
 string view_pdf_info
+style Theme.App.Starting
 style Theme.PDFUtilityApp
 xml backup_rules
 xml data_extraction_rules

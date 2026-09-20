@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.pdfutilityapp"
+    namespace = "com.swiftapp"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.pdfutilityapp"
+        applicationId = "com.swiftapp"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

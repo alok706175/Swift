@@ -165,7 +165,7 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\alokk\.gradle\cach
 	android:allowBackup
 		ADDED from C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:10:9-35
 	android:theme
-		ADDED from C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:18:9-51
+		ADDED from C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:18:9-50
 	android:dataExtractionRules
 		ADDED from C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:11:9-65
 	android:name
@@ -177,7 +177,7 @@ ADDED from C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:20:9-29
 	android:exported
 		ADDED from C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:22:13-36
 	android:theme
-		ADDED from C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:24:13-55
+		ADDED from C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:24:13-54
 	android:name
 		ADDED from C:\Users\alokk\Desktop\Swift\app\src\main\AndroidManifest.xml:21:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER

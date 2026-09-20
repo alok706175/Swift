@@ -18,10 +18,14 @@
     <string name="pdf_created_success">PDF created successfully!</string>
     <string name="recent_documents">Recent Documents</string>
     <string name="view_pdf_info">Analyze PDF</string>
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_swift_app_icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.PDFUtilityApp</item>
+    </style>
     <style name="Theme.PDFUtilityApp" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         <item name="android:windowBackground">@color/white</item>
-        <item name="android:windowDisablePreview">true</item>
     </style>
 </resources>
