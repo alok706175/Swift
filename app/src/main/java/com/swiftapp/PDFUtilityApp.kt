@@ -1,6 +1,7 @@
 package com.swiftapp
 
 import android.app.Application
+import com.swiftapp.utils.HapticManager
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,9 +15,11 @@ class PDFUtilityApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        HapticManager.init(this)
         // Async initialization on background thread to prevent UI freezing during app startup
         CoroutineScope(Dispatchers.Default).launch {
             PDFBoxResourceLoader.init(applicationContext)
         }
     }
 }
+
