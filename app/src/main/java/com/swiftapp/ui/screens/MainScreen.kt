@@ -169,6 +169,8 @@ fun MainScreen(
     var rotatePdfFile by remember { mutableStateOf<File?>(null) }
     var isSplitScreenOpen by remember { mutableStateOf(false) }
     var splitPdfFile by remember { mutableStateOf<File?>(null) }
+    var isDeletePagesScreenOpen by remember { mutableStateOf(false) }
+    var deletePagesPdfFile by remember { mutableStateOf<File?>(null) }
 
     if (readerFile != null) {
         BackHandler { readerFile = null }
@@ -374,6 +376,28 @@ fun MainScreen(
                 viewModel.loadAllFiles(context)
                 isSplitScreenOpen = false
                 splitPdfFile = null
+                readerFile = file
+            },
+        )
+        return
+    }
+
+    if (isDeletePagesScreenOpen) {
+        BackHandler {
+            isDeletePagesScreenOpen = false
+            deletePagesPdfFile = null
+        }
+        DeletePagesScreen(
+            initialPdfFile = deletePagesPdfFile,
+            onNavigateBack = {
+                isDeletePagesScreenOpen = false
+                deletePagesPdfFile = null
+            },
+            onOpenPdf = { file ->
+                viewModel.addToRecent(context, file)
+                viewModel.loadAllFiles(context)
+                isDeletePagesScreenOpen = false
+                deletePagesPdfFile = null
                 readerFile = file
             },
         )
@@ -600,6 +624,16 @@ fun MainScreen(
                     isSplitScreenOpen = true
                 },
             ),
+            UtilityToolItem(
+                id = "delete_pages",
+                title = "Delete Pages",
+                description = "Remove unwanted pages from PDF.",
+                icon = Icons.Outlined.DeleteSweep,
+                onClick = {
+                    deletePagesPdfFile = null
+                    isDeletePagesScreenOpen = true
+                },
+            ),
         )
     }
 
@@ -669,6 +703,7 @@ fun MainScreen(
                             "unlock" -> { unlockPdfFile = file; isUnlockScreenOpen = true }
                             "rotate" -> { rotatePdfFile = file; isRotateScreenOpen = true }
                             "split" -> { splitPdfFile = file; isSplitScreenOpen = true }
+                            "delete_pages" -> { deletePagesPdfFile = file; isDeletePagesScreenOpen = true }
                             "pdf_to_images" -> { pdfToImagesFile = file; isPdfToImagesScreenOpen = true }
                         }
                     }
@@ -728,6 +763,10 @@ fun MainScreen(
                                 "split" -> {
                                     splitPdfFile = file
                                     isSplitScreenOpen = true
+                                }
+                                "delete_pages" -> {
+                                    deletePagesPdfFile = file
+                                    isDeletePagesScreenOpen = true
                                 }
                                 "pdf_to_images" -> {
                                     pdfToImagesFile = file
@@ -1705,6 +1744,15 @@ fun PdfFileContextMenu(
                     showMoreTools = false
                     onDismiss()
                     onSendToTool("split")
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Delete / Remove Pages") },
+                leadingIcon = { Icon(Icons.Outlined.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                onClick = {
+                    showMoreTools = false
+                    onDismiss()
+                    onSendToTool("delete_pages")
                 }
             )
         }
