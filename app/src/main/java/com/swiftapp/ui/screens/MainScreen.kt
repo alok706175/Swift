@@ -58,6 +58,9 @@ import com.swiftapp.ui.viewmodel.PdfViewModel
 import com.swiftapp.ui.viewmodel.ThemeMode
 import com.swiftapp.ui.viewmodel.ThemeViewModel
 import com.swiftapp.ui.components.*
+import com.swiftapp.ui.components.LanguageSelectionDialog
+import com.swiftapp.ui.viewmodel.LanguageViewModel
+import com.swiftapp.utils.AppLanguage
 import com.swiftapp.utils.PdfFileItem
 import com.swiftapp.utils.PdfHelper
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
@@ -89,6 +92,7 @@ fun MainScreen(
         factory = PdfViewModel.provideFactory(LocalContext.current),
     ),
     themeViewModel: ThemeViewModel = viewModel(),
+    languageViewModel: LanguageViewModel = viewModel(),
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -102,6 +106,7 @@ fun MainScreen(
     val sortOption by viewModel.sortOption.collectAsState()
     val isGridView by viewModel.isGridView.collectAsState()
     val hasStoragePermission by viewModel.hasStoragePermission.collectAsState()
+    val currentLanguage by languageViewModel.currentLanguage.collectAsState()
 
     var selectedTab by remember { mutableStateOf(NavTab.Home) }
     var searchQuery by remember { mutableStateOf("") }
@@ -531,33 +536,33 @@ fun MainScreen(
     val coralContainer = MaterialTheme.colorScheme.primaryContainer
     val coralPrimary = MaterialTheme.colorScheme.primary
 
-    val allTools = remember(coralContainer, coralPrimary) {
+    val allTools = remember(coralContainer, coralPrimary, currentLanguage) {
         listOf(
             UtilityToolItem(
                 id = "merge_pdf",
-                title = "Merge PDF",
-                description = "Combine multiple PDFs into one.",
+                title = languageViewModel.getString("tool_merge"),
+                description = languageViewModel.getString("tool_merge_desc"),
                 icon = Icons.Outlined.CallMerge,
                 onClick = { isMergeScreenOpen = true },
             ),
             UtilityToolItem(
                 id = "compress_pdf",
-                title = "Compress PDF",
-                description = "Reduce document file size.",
+                title = languageViewModel.getString("tool_compress"),
+                description = languageViewModel.getString("tool_compress_desc"),
                 icon = Icons.Outlined.Compress,
                 onClick = { isCompressScreenOpen = true },
             ),
             UtilityToolItem(
                 id = "scan_pdf",
-                title = "Scan to PDF",
-                description = "Scan paper documents using camera.",
+                title = languageViewModel.getString("tool_scan"),
+                description = languageViewModel.getString("tool_scan_desc"),
                 icon = Icons.Outlined.DocumentScanner,
                 onClick = { isScanScreenOpen = true },
             ),
             UtilityToolItem(
                 id = "esign_pdf",
-                title = "E-Sign PDF",
-                description = "Add signature stamp to PDF.",
+                title = languageViewModel.getString("tool_esign"),
+                description = languageViewModel.getString("tool_esign_desc"),
                 icon = Icons.Outlined.BorderColor,
                 onClick = {
                     signPdfFile = null
@@ -566,8 +571,8 @@ fun MainScreen(
             ),
             UtilityToolItem(
                 id = "protect_pdf",
-                title = "Protect PDF",
-                description = "Add password encryption.",
+                title = languageViewModel.getString("tool_protect"),
+                description = languageViewModel.getString("tool_protect_desc"),
                 icon = Icons.Outlined.Lock,
                 onClick = {
                     protectPdfFile = null
@@ -576,8 +581,8 @@ fun MainScreen(
             ),
             UtilityToolItem(
                 id = "unlock_pdf",
-                title = "Unlock PDF",
-                description = "Remove password lock.",
+                title = languageViewModel.getString("tool_unlock"),
+                description = languageViewModel.getString("tool_unlock_desc"),
                 icon = Icons.Outlined.LockOpen,
                 onClick = {
                     unlockPdfFile = null
@@ -586,8 +591,8 @@ fun MainScreen(
             ),
             UtilityToolItem(
                 id = "image_to_pdf",
-                title = "Image to PDF",
-                description = "Convert photos & images to PDF.",
+                title = languageViewModel.getString("tool_image_to_pdf"),
+                description = languageViewModel.getString("tool_image_to_pdf_desc"),
                 icon = Icons.Outlined.Collections,
                 onClick = {
                     imageToPdfUris = null
@@ -596,8 +601,8 @@ fun MainScreen(
             ),
             UtilityToolItem(
                 id = "pdf_to_images",
-                title = "PDF to Images",
-                description = "Extract images from pages.",
+                title = languageViewModel.getString("tool_pdf_to_images"),
+                description = languageViewModel.getString("tool_pdf_to_images_desc"),
                 icon = Icons.Outlined.Image,
                 onClick = {
                     pdfToImagesFile = null
@@ -606,8 +611,8 @@ fun MainScreen(
             ),
             UtilityToolItem(
                 id = "rotate_pdf",
-                title = "Rotate PDF",
-                description = "Change page orientation.",
+                title = languageViewModel.getString("tool_rotate"),
+                description = languageViewModel.getString("tool_rotate_desc"),
                 icon = Icons.AutoMirrored.Outlined.RotateRight,
                 onClick = {
                     rotatePdfFile = null
@@ -616,8 +621,8 @@ fun MainScreen(
             ),
             UtilityToolItem(
                 id = "split_pdf",
-                title = "Split PDF",
-                description = "Extract pages into separate PDFs.",
+                title = languageViewModel.getString("tool_split"),
+                description = languageViewModel.getString("tool_split_desc"),
                 icon = Icons.AutoMirrored.Outlined.CallSplit,
                 onClick = {
                     splitPdfFile = null
@@ -626,8 +631,8 @@ fun MainScreen(
             ),
             UtilityToolItem(
                 id = "delete_pages",
-                title = "Delete Pages",
-                description = "Remove unwanted pages from PDF.",
+                title = languageViewModel.getString("tool_delete_pages"),
+                description = languageViewModel.getString("tool_delete_pages_desc"),
                 icon = Icons.Outlined.DeleteSweep,
                 onClick = {
                     deletePagesPdfFile = null
@@ -645,9 +650,14 @@ fun MainScreen(
                 tonalElevation = 8.dp,
             ) {
                 NavTab.entries.forEach { tab ->
+                    val tabLabel = when (tab) {
+                        NavTab.Home -> languageViewModel.getString("tab_home")
+                        NavTab.Tools -> languageViewModel.getString("tab_tools")
+                        NavTab.Settings -> languageViewModel.getString("tab_settings")
+                    }
                     NavigationBarItem(
-                        icon = { Icon(tab.icon, contentDescription = tab.title) },
-                        label = { Text(tab.title, fontWeight = FontWeight.Bold) },
+                        icon = { Icon(tab.icon, contentDescription = tabLabel) },
+                        label = { Text(tabLabel, fontWeight = FontWeight.Bold) },
                         selected = selectedTab == tab,
                         onClick = {
                             selectedTab = tab
@@ -720,6 +730,7 @@ fun MainScreen(
                         hasStoragePermission = hasStoragePermission,
                         searchQuery = searchQuery,
                         context = context,
+                        languageViewModel = languageViewModel,
                         onSearchChange = {
                             searchQuery = it
                             viewModel.setSearchQuery(it)
@@ -780,7 +791,10 @@ fun MainScreen(
                         searchQuery = searchQuery,
                         onSearchChange = { searchQuery = it },
                     )
-                    NavTab.Settings -> SettingsContent(themeViewModel = themeViewModel)
+                    NavTab.Settings -> SettingsContent(
+                        themeViewModel = themeViewModel,
+                        languageViewModel = languageViewModel
+                    )
                 }
             }
         }
@@ -954,6 +968,7 @@ fun HomeDashboardContent(
     hasStoragePermission: Boolean,
     searchQuery: String,
     context: Context,
+    languageViewModel: LanguageViewModel,
     onSearchChange: (String) -> Unit,
     onSubSectionSelected: (HomeSubSection) -> Unit,
     onFilterSelected: (PdfListFilter) -> Unit,
@@ -1051,7 +1066,7 @@ fun HomeDashboardContent(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = "All Your PDF Tools in One Place",
+                                    text = languageViewModel.getString("tagline"),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -1163,7 +1178,7 @@ fun HomeDashboardContent(
                                         tint = if (isRecentSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        text = "Recent",
+                                        text = languageViewModel.getString("subsection_recent"),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = if (isRecentSelected) FontWeight.Bold else FontWeight.Medium,
                                         color = if (isRecentSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
@@ -1196,7 +1211,7 @@ fun HomeDashboardContent(
                                         tint = if (isAllFilesSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        text = "All Files",
+                                        text = languageViewModel.getString("subsection_all_files"),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = if (isAllFilesSelected) FontWeight.Bold else FontWeight.Medium,
                                         color = if (isAllFilesSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
@@ -2154,8 +2169,23 @@ fun ToolboxGridCard(tool: UtilityToolItem, modifier: Modifier = Modifier) {
  * Screen 5: Settings (Design Screen 5)
  */
 @Composable
-fun SettingsContent(themeViewModel: ThemeViewModel) {
+fun SettingsContent(
+    themeViewModel: ThemeViewModel,
+    languageViewModel: LanguageViewModel
+) {
     val themeMode by themeViewModel.themeMode.collectAsState()
+    val currentLanguage by languageViewModel.currentLanguage.collectAsState()
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
+    if (showLanguageDialog) {
+        LanguageSelectionDialog(
+            currentLanguage = currentLanguage,
+            onLanguageSelected = { newLang ->
+                languageViewModel.setLanguage(newLang)
+            },
+            onDismiss = { showLanguageDialog = false }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -2165,13 +2195,13 @@ fun SettingsContent(themeViewModel: ThemeViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = "Settings",
+            text = languageViewModel.getString("settings_title"),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
         )
 
         // Account Group
-        SettingsGroupCard(title = "Account") {
+        SettingsGroupCard(title = languageViewModel.getString("settings_account")) {
             SettingsRowItem(
                 icon = Icons.Outlined.Person,
                 label = "User Profile",
@@ -2180,67 +2210,27 @@ fun SettingsContent(themeViewModel: ThemeViewModel) {
             )
         }
 
-        // Theme & Appearance Group
-        val isAmoled by themeViewModel.isAmoledBlack.collectAsState()
-
-        SettingsGroupCard(title = "Theme & Appearance") {
-            ThemeSelectorRow(
-                currentMode = themeMode,
-                onModeSelected = { themeViewModel.setThemeMode(it) }
-            )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-
-            // Pure AMOLED Black Toggle
+        // App Settings Group
+        SettingsGroupCard(title = languageViewModel.getString("settings_app")) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = if (isAmoled) Color.Black else MaterialTheme.colorScheme.surfaceVariant,
-                        border = if (isAmoled) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null,
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.Contrast,
-                                contentDescription = null,
-                                tint = if (isAmoled) Color.White else MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                    Column {
-                        Text(
-                            text = "Pure AMOLED Black",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "100% pitch black (#000000) to save battery on OLED displays",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(languageViewModel.getString("settings_theme"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 }
                 Switch(
-                    checked = isAmoled,
-                    onCheckedChange = { themeViewModel.setAmoledBlack(it) }
+                    checked = themeMode == ThemeMode.DARK,
+                    onCheckedChange = { isDark ->
+                        themeViewModel.setThemeMode(if (isDark) ThemeMode.DARK else ThemeMode.LIGHT)
+                    },
                 )
             }
-        }
 
-        // App Preferences Group
-        SettingsGroupCard(title = "Preferences") {
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -2248,7 +2238,7 @@ fun SettingsContent(themeViewModel: ThemeViewModel) {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(Icons.Outlined.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text("Notifications", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text(languageViewModel.getString("settings_notification"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 }
                 var notifyEnabled by remember { mutableStateOf(true) }
                 Switch(
@@ -2261,33 +2251,33 @@ fun SettingsContent(themeViewModel: ThemeViewModel) {
 
             SettingsRowItem(
                 icon = Icons.Outlined.Language,
-                label = "Language",
-                subtitle = "English",
-                onClick = {},
+                label = languageViewModel.getString("settings_language"),
+                subtitle = "${currentLanguage.nativeName} (${currentLanguage.englishName})",
+                onClick = { showLanguageDialog = true },
             )
         }
 
         // Storage Group
-        SettingsGroupCard(title = "Storage") {
+        SettingsGroupCard(title = languageViewModel.getString("settings_storage")) {
             SettingsRowItem(
                 icon = Icons.Outlined.CloudQueue,
-                label = "Cloud Services",
+                label = languageViewModel.getString("settings_cloud"),
                 onClick = {},
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
             SettingsRowItem(
                 icon = Icons.Outlined.FolderZip,
-                label = "Dropbox",
+                label = languageViewModel.getString("settings_dropbox"),
                 onClick = {},
             )
         }
 
         // Privacy Group
-        SettingsGroupCard(title = "Privacy") {
+        SettingsGroupCard(title = languageViewModel.getString("settings_privacy")) {
             SettingsRowItem(
                 icon = Icons.Outlined.Info,
-                label = "About Swift PDF",
-                subtitle = "Version 1.0.0 (2026)",
+                label = languageViewModel.getString("settings_about"),
+                subtitle = languageViewModel.getString("settings_version"),
                 onClick = {},
             )
         }
@@ -2314,65 +2304,6 @@ fun SettingsGroupCard(title: String, content: @Composable ColumnScope.() -> Unit
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 content = content,
             )
-        }
-    }
-}
-
-@Composable
-fun ThemeSelectorRow(
-    currentMode: ThemeMode,
-    onModeSelected: (ThemeMode) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        val options = listOf(
-            Triple(ThemeMode.SYSTEM, "System Default", Icons.Outlined.BrightnessAuto),
-            Triple(ThemeMode.LIGHT, "Light Mode", Icons.Outlined.LightMode),
-            Triple(ThemeMode.DARK, "Dark Mode", Icons.Outlined.DarkMode)
-        )
-
-        options.forEach { (mode, title, icon) ->
-            val isSelected = currentMode == mode
-            TactileCard(
-                onClick = { onModeSelected(mode) },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(76.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                ),
-                border = if (isSelected) {
-                    androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-                } else null
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 4.dp, vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = title,
-                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
         }
     }
 }

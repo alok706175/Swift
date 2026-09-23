@@ -13,6 +13,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.swiftapp.ui.screens.MainScreen
 import com.swiftapp.ui.theme.PDFUtilityAppTheme
+import com.swiftapp.ui.viewmodel.LanguageViewModel
 import com.swiftapp.ui.viewmodel.ThemeMode
 import com.swiftapp.ui.viewmodel.ThemeViewModel
 
@@ -27,27 +28,25 @@ class MainActivity : ComponentActivity() {
         
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
+            val languageViewModel: LanguageViewModel = viewModel()
             val themeMode by themeViewModel.themeMode.collectAsState()
-            val isAmoled by themeViewModel.isAmoledBlack.collectAsState()
+            val currentLanguage by languageViewModel.currentLanguage.collectAsState()
 
-            val systemInDark = androidx.compose.foundation.isSystemInDarkTheme()
             val darkTheme = when (themeMode) {
-                ThemeMode.SYSTEM -> systemInDark
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
-                else -> systemInDark
+                else -> false
             }
 
-            PDFUtilityAppTheme(
-                darkTheme = darkTheme,
-                isAmoled = isAmoled,
-                dynamicColor = false
-            ) {
+            PDFUtilityAppTheme(darkTheme = darkTheme, dynamicColor = false) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    MainScreen(themeViewModel = themeViewModel)
+                    MainScreen(
+                        themeViewModel = themeViewModel,
+                        languageViewModel = languageViewModel
+                    )
                 }
             }
         }

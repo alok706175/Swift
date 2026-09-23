@@ -36,27 +36,6 @@ private val DarkColorScheme = darkColorScheme(
     onSurfaceVariant = OnSurfaceVariantDark,
 )
 
-private val AmoledDarkColorScheme = darkColorScheme(
-    primary = PrimaryDark,
-    onPrimary = OnPrimaryDark,
-    primaryContainer = PrimaryContainerDark,
-    onPrimaryContainer = OnPrimaryContainerDark,
-    secondary = SecondaryDark,
-    onSecondary = OnSecondaryDark,
-    secondaryContainer = SecondaryContainerDark,
-    onSecondaryContainer = OnSecondaryContainerDark,
-    tertiary = TertiaryDark,
-    onTertiary = OnTertiaryDark,
-    tertiaryContainer = TertiaryContainerDark,
-    onTertiaryContainer = OnTertiaryContainerDark,
-    background = BackgroundAmoled,
-    onBackground = OnBackgroundAmoled,
-    surface = SurfaceAmoled,
-    onSurface = OnSurfaceAmoled,
-    surfaceVariant = SurfaceVariantAmoled,
-    onSurfaceVariant = OnSurfaceVariantAmoled,
-)
-
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryLight,
     onPrimary = OnPrimaryLight,
@@ -81,12 +60,10 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun PDFUtilityAppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    isAmoled: Boolean = false,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
-        darkTheme && isAmoled -> AmoledDarkColorScheme
         (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
