@@ -11,6 +11,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
@@ -50,6 +53,7 @@ class MainActivity : FragmentActivity() {
             val themeMode by themeViewModel.themeMode.collectAsState()
             val isSessionUnlocked by AppLockManager.isSessionUnlocked.collectAsState()
             val lockType by AppLockManager.lockTypeFlow.collectAsState()
+            var showSplashScreen by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
 
             val darkTheme = when (themeMode) {
                 ThemeMode.LIGHT -> false
@@ -62,27 +66,44 @@ class MainActivity : FragmentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    val isLocked = !isSessionUnlocked && lockType != com.swiftapp.utils.AppLockType.NONE
-
                     AnimatedContent(
-                        targetState = isLocked,
+                        targetState = showSplashScreen,
                         transitionSpec = {
-                            fadeIn() togetherWith fadeOut()
+                            fadeIn(animationSpec = androidx.compose.animation.core.tween(350)) togetherWith
+                                fadeOut(animationSpec = androidx.compose.animation.core.tween(350))
                         },
-                        label = "AppLockTransition"
-                    ) { locked ->
-                        if (locked) {
-                            AppLockScreen(
-                                languageViewModel = languageViewModel,
-                                onUnlocked = {
-                                    AppLockManager.unlockSession()
+                        label = "SplashScreenTransition"
+                    ) { isSplash ->
+                        if (isSplash) {
+                            com.swiftapp.ui.screens.AnimatedSplashScreen(
+                                onSplashFinished = {
+                                    showSplashScreen = false
                                 }
                             )
                         } else {
-                            MainScreen(
-                                themeViewModel = themeViewModel,
-                                languageViewModel = languageViewModel
-                            )
+                            val isLocked = !isSessionUnlocked && lockType != com.swiftapp.utils.AppLockType.NONE
+
+                            AnimatedContent(
+                                targetState = isLocked,
+                                transitionSpec = {
+                                    fadeIn() togetherWith fadeOut()
+                                },
+                                label = "AppLockTransition"
+                            ) { locked ->
+                                if (locked) {
+                                    AppLockScreen(
+                                        languageViewModel = languageViewModel,
+                                        onUnlocked = {
+                                            AppLockManager.unlockSession()
+                                        }
+                                    )
+                                } else {
+                                    MainScreen(
+                                        themeViewModel = themeViewModel,
+                                        languageViewModel = languageViewModel
+                                    )
+                                }
+                            }
                         }
                     }
                 }
