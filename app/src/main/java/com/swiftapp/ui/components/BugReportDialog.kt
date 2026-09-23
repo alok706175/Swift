@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -58,6 +59,10 @@ fun BugReportDialog(
     var bugDescription by remember { mutableStateOf("") }
     val attachments = remember { mutableStateListOf<BugAttachment>() }
 
+    BackHandler {
+        onDismiss()
+    }
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> ->
@@ -79,8 +84,15 @@ fun BugReportDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
+        )
     ) {
+        BackHandler {
+            onDismiss()
+        }
         Card(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
