@@ -2180,27 +2180,67 @@ fun SettingsContent(themeViewModel: ThemeViewModel) {
             )
         }
 
-        // App Settings Group
-        SettingsGroupCard(title = "App Settings") {
+        // Theme & Appearance Group
+        val isAmoled by themeViewModel.isAmoledBlack.collectAsState()
+
+        SettingsGroupCard(title = "Theme & Appearance") {
+            ThemeSelectorRow(
+                currentMode = themeMode,
+                onModeSelected = { themeViewModel.setThemeMode(it) }
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+
+            // Pure AMOLED Black Toggle
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text("Theme (Dark Mode)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = if (isAmoled) Color.Black else MaterialTheme.colorScheme.surfaceVariant,
+                        border = if (isAmoled) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Outlined.Contrast,
+                                contentDescription = null,
+                                tint = if (isAmoled) Color.White else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Pure AMOLED Black",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "100% pitch black (#000000) to save battery on OLED displays",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Switch(
-                    checked = themeMode == ThemeMode.DARK,
-                    onCheckedChange = { isDark ->
-                        themeViewModel.setThemeMode(if (isDark) ThemeMode.DARK else ThemeMode.LIGHT)
-                    },
+                    checked = isAmoled,
+                    onCheckedChange = { themeViewModel.setAmoledBlack(it) }
                 )
             }
+        }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-
+        // App Preferences Group
+        SettingsGroupCard(title = "Preferences") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -2208,7 +2248,7 @@ fun SettingsContent(themeViewModel: ThemeViewModel) {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(Icons.Outlined.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text("Notification", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text("Notifications", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                 }
                 var notifyEnabled by remember { mutableStateOf(true) }
                 Switch(
@@ -2274,6 +2314,65 @@ fun SettingsGroupCard(title: String, content: @Composable ColumnScope.() -> Unit
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 content = content,
             )
+        }
+    }
+}
+
+@Composable
+fun ThemeSelectorRow(
+    currentMode: ThemeMode,
+    onModeSelected: (ThemeMode) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        val options = listOf(
+            Triple(ThemeMode.SYSTEM, "System Default", Icons.Outlined.BrightnessAuto),
+            Triple(ThemeMode.LIGHT, "Light Mode", Icons.Outlined.LightMode),
+            Triple(ThemeMode.DARK, "Dark Mode", Icons.Outlined.DarkMode)
+        )
+
+        options.forEach { (mode, title, icon) ->
+            val isSelected = currentMode == mode
+            TactileCard(
+                onClick = { onModeSelected(mode) },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(76.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ),
+                border = if (isSelected) {
+                    androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                } else null
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = title,
+                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
     }
 }

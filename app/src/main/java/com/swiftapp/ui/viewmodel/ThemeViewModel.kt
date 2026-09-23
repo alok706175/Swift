@@ -1,6 +1,8 @@
 package com.swiftapp.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Context
+import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,9 +12,24 @@ enum class ThemeMode {
     SYSTEM, LIGHT, DARK, SCHEDULED
 }
 
-class ThemeViewModel : ViewModel() {
-    private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
+class ThemeViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val prefs = application.getSharedPreferences("swift_theme_prefs", Context.MODE_PRIVATE)
+
+    private val _themeMode = MutableStateFlow(
+        try {
+            val saved = prefs.getString("theme_mode", ThemeMode.SYSTEM.name) ?: ThemeMode.SYSTEM.name
+            ThemeMode.valueOf(saved)
+        } catch (_: Exception) {
+            ThemeMode.SYSTEM
+        }
+    )
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
+    private val _isAmoledBlack = MutableStateFlow(
+        prefs.getBoolean("is_amoled_black", false)
+    )
+    val isAmoledBlack: StateFlow<Boolean> = _isAmoledBlack.asStateFlow()
 
     private val _isDynamicColor = MutableStateFlow(true)
     val isDynamicColor: StateFlow<Boolean> = _isDynamicColor.asStateFlow()
@@ -25,6 +42,12 @@ class ThemeViewModel : ViewModel() {
 
     fun setThemeMode(mode: ThemeMode) {
         _themeMode.value = mode
+        prefs.edit().putString("theme_mode", mode.name).apply()
+    }
+
+    fun setAmoledBlack(enabled: Boolean) {
+        _isAmoledBlack.value = enabled
+        prefs.edit().putBoolean("is_amoled_black", enabled).apply()
     }
 
     fun setDynamicColor(enabled: Boolean) {
@@ -37,6 +60,8 @@ class ThemeViewModel : ViewModel() {
     }
 
     fun toggleLightDark() {
-        _themeMode.value = if (_themeMode.value == ThemeMode.DARK) ThemeMode.LIGHT else ThemeMode.DARK
+        val next = if (_themeMode.value == ThemeMode.DARK) ThemeMode.LIGHT else ThemeMode.DARK
+        setThemeMode(next)
     }
 }
+

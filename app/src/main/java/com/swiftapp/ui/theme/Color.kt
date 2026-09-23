@@ -51,3 +51,13 @@ val SurfaceDark = Color(0xFF1E2024)
 val OnSurfaceDark = Color(0xFFF1F5F9)
 val SurfaceVariantDark = Color(0xFF2A2D32)
 val OnSurfaceVariantDark = Color(0xFF94A3B8)
+
+// Pure AMOLED Dark Colors (#000000 Pitch Black)
+val BackgroundAmoled = Color(0xFF000000)
+val SurfaceAmoled = Color(0xFF000000)
+val SurfaceCardAmoled = Color(0xFF0A0A0C)
+val SurfaceVariantAmoled = Color(0xFF141418)
+val OnBackgroundAmoled = Color(0xFFFFFFFF)
+val OnSurfaceAmoled = Color(0xFFEDEDED)
+val OnSurfaceVariantAmoled = Color(0xFFA0A0AB)
+

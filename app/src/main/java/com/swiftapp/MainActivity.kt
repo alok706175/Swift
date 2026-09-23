@@ -28,14 +28,21 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
             val themeMode by themeViewModel.themeMode.collectAsState()
+            val isAmoled by themeViewModel.isAmoledBlack.collectAsState()
 
+            val systemInDark = androidx.compose.foundation.isSystemInDarkTheme()
             val darkTheme = when (themeMode) {
+                ThemeMode.SYSTEM -> systemInDark
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
-                else -> false
+                else -> systemInDark
             }
 
-            PDFUtilityAppTheme(darkTheme = darkTheme, dynamicColor = false) {
+            PDFUtilityAppTheme(
+                darkTheme = darkTheme,
+                isAmoled = isAmoled,
+                dynamicColor = false
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
