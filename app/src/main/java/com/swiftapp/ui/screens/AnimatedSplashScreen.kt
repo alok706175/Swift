@@ -46,42 +46,41 @@ fun AnimatedSplashScreen(
 
     LaunchedEffect(Unit) {
         animTime.animateTo(
-            targetValue = 2.8f,
+            targetValue = 2.2f,
             animationSpec = tween(
-                durationMillis = 2800,
+                durationMillis = 2200,
                 easing = LinearEasing
             )
         )
-        delay(100)
+        delay(50)
         onSplashFinished()
     }
 
     val t = animTime.value
 
-    // --- Phase 1: Stroke Draw Progress (0.0s to 1.0s) ---
+    // --- Phase 1: Stroke Draw Progress (0.0s to 0.8s) ---
     val strokeProgress = remember(t) {
-        if (t <= 0.0f) 0f
-        else if (t >= 1.0f) 1f
-        else strokeEasing.transform(t / 1.0f)
+        if (t <= 0.0f) 0.05f
+        else if (t >= 0.8f) 1f
+        else 0.05f + (0.95f * strokeEasing.transform(t / 0.8f))
     }
 
-    // --- Phase 2: Card Scale & Opacity (1.0s to 1.8s) ---
+    // --- Phase 2: Card Scale & Opacity (0.0s to 0.8s & Bounce 0.8s to 1.3s) ---
     val cardScale = remember(t) {
         when {
-            t < 1.0f -> 0.75f
-            t in 1.0f..1.8f -> {
-                val progress = cardEmergenceEasing.transform((t - 1.0f) / 0.8f)
-                0.75f + (0.25f * progress) // 0.75 -> 1.0
+            t <= 0.7f -> {
+                val progress = cardEmergenceEasing.transform(t / 0.7f)
+                0.86f + (0.14f * progress) // 0.86 -> 1.0
             }
-            t in 1.8f..2.1f -> {
-                // Micro settle bounce 1.0 -> 1.03
-                val progress = bounceEasing.transform((t - 1.8f) / 0.3f)
-                1.0f + (0.035f * progress)
+            t in 0.7f..1.0f -> {
+                // Micro settle bounce 1.0 -> 1.04
+                val progress = bounceEasing.transform((t - 0.7f) / 0.3f)
+                1.0f + (0.04f * progress)
             }
-            t in 2.1f..2.4f -> {
-                // Bounce return 1.03 -> 1.0
-                val progress = bounceEasing.transform((t - 2.1f) / 0.3f)
-                1.035f - (0.035f * progress)
+            t in 1.0f..1.3f -> {
+                // Bounce return 1.04 -> 1.0
+                val progress = bounceEasing.transform((t - 1.0f) / 0.3f)
+                1.04f - (0.04f * progress)
             }
             else -> 1.0f
         }
@@ -89,17 +88,16 @@ fun AnimatedSplashScreen(
 
     val cardAlpha = remember(t) {
         when {
-            t < 0.95f -> 0f
-            t in 0.95f..1.6f -> ((t - 0.95f) / 0.65f).coerceIn(0f, 1f)
+            t <= 0.5f -> (0.4f + (0.6f * (t / 0.5f))).coerceIn(0f, 1f)
             else -> 1f
         }
     }
 
-    // --- Phase 3: Silhouette White Transition (1.6s to 2.2s) ---
+    // --- Phase 3: Silhouette White Transition (0.6s to 1.2s) ---
     val birdWhiteProgress = remember(t) {
         when {
-            t < 1.4f -> 0f
-            t in 1.4f..2.2f -> ((t - 1.4f) / 0.8f).coerceIn(0f, 1f)
+            t < 0.6f -> 0f
+            t in 0.6f..1.2f -> ((t - 0.6f) / 0.6f).coerceIn(0f, 1f)
             else -> 1f
         }
     }
@@ -109,31 +107,31 @@ fun AnimatedSplashScreen(
         lerpColor(Color(0xFFFF6B4A), Color(0xFFFFFFFF), birdWhiteProgress)
     }
 
-    // --- Phase 4: Typography Fade & Slide Up (2.1s to 2.7s) ---
+    // --- Phase 4: Typography Fade & Slide Up (1.0s to 1.7s) ---
     val textAlpha = remember(t) {
         when {
-            t < 2.0f -> 0f
-            t in 2.0f..2.6f -> ((t - 2.0f) / 0.6f).coerceIn(0f, 1f)
+            t < 1.0f -> 0f
+            t in 1.0f..1.6f -> ((t - 1.0f) / 0.6f).coerceIn(0f, 1f)
             else -> 1f
         }
     }
 
     val textOffsetY = remember(t) {
         when {
-            t < 2.0f -> 24.dp
-            t in 2.0f..2.6f -> {
-                val progress = cardEmergenceEasing.transform((t - 2.0f) / 0.6f)
-                (24 * (1f - progress)).dp
+            t < 1.0f -> 20.dp
+            t in 1.0f..1.6f -> {
+                val progress = cardEmergenceEasing.transform((t - 1.0f) / 0.6f)
+                (20 * (1f - progress)).dp
             }
             else -> 0.dp
         }
     }
 
-    // Overall Splash Container Fade Out (2.6s to 2.8s)
+    // Overall Splash Container Fade Out (2.0s to 2.2s)
     val splashExitAlpha = remember(t) {
         when {
-            t < 2.6f -> 1f
-            t in 2.6f..2.8f -> 1f - ((t - 2.6f) / 0.2f).coerceIn(0f, 1f)
+            t < 2.0f -> 1f
+            t in 2.0f..2.2f -> 1f - ((t - 2.0f) / 0.2f).coerceIn(0f, 1f)
             else -> 0f
         }
     }
