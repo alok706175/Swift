@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.swiftapp.utils.HapticManager
 
 /**
  * High-performance extension modifier for immediate touch-down scale reaction (<16ms)
@@ -67,11 +68,7 @@ fun Modifier.bounceClick(
                     val now = System.currentTimeMillis()
                     if (now - lastClickTime >= debounceTimeMs) {
                         lastClickTime = now
-                        try {
-                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                        } catch (_: Exception) {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        }
+                        HapticManager.performHaptic(view, haptic)
                         onClick()
                     }
                 }
@@ -119,11 +116,7 @@ fun TactileButton(
                 val now = System.currentTimeMillis()
                 if (now - lastClickTime >= 250L) {
                     lastClickTime = now
-                    try {
-                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    } catch (_: Exception) {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    }
+                    HapticManager.performHaptic(view, haptic)
                     onClick()
                 }
             }
@@ -187,11 +180,7 @@ fun TactileOutlinedButton(
                 val now = System.currentTimeMillis()
                 if (now - lastClickTime >= 250L) {
                     lastClickTime = now
-                    try {
-                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    } catch (_: Exception) {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    }
+                    HapticManager.performHaptic(view, haptic)
                     onClick()
                 }
             }
@@ -255,11 +244,7 @@ fun TactileIconButton(
                 val now = System.currentTimeMillis()
                 if (now - lastClickTime >= 200L) {
                     lastClickTime = now
-                    try {
-                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    } catch (_: Exception) {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    }
+                    HapticManager.performHaptic(view, haptic)
                     onClick()
                 }
             }
@@ -327,11 +312,7 @@ fun TactileCard(
                 val now = System.currentTimeMillis()
                 if (now - lastClickTime >= 250L) {
                     lastClickTime = now
-                    try {
-                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    } catch (_: Exception) {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    }
+                    HapticManager.performHaptic(view, haptic)
                     onClick()
                 }
             }
@@ -349,3 +330,4 @@ fun TactileCard(
         content = content
     )
 }
+

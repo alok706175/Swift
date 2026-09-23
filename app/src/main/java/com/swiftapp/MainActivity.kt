@@ -16,6 +16,7 @@ import com.swiftapp.ui.theme.PDFUtilityAppTheme
 import com.swiftapp.ui.viewmodel.LanguageViewModel
 import com.swiftapp.ui.viewmodel.ThemeMode
 import com.swiftapp.ui.viewmodel.ThemeViewModel
+import com.swiftapp.utils.HapticManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
         }
         
         super.onCreate(savedInstanceState)
+        HapticManager.init(this)
         
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()

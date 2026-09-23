@@ -2173,8 +2173,10 @@ fun SettingsContent(
     themeViewModel: ThemeViewModel,
     languageViewModel: LanguageViewModel
 ) {
+    val context = LocalContext.current
     val themeMode by themeViewModel.themeMode.collectAsState()
     val currentLanguage by languageViewModel.currentLanguage.collectAsState()
+    val isHapticEnabled by com.swiftapp.utils.HapticManager.isHapticEnabledFlow.collectAsState()
     var showLanguageDialog by remember { mutableStateOf(false) }
 
     if (showLanguageDialog) {
@@ -2244,6 +2246,40 @@ fun SettingsContent(
                 Switch(
                     checked = notifyEnabled,
                     onCheckedChange = { notifyEnabled = it },
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(Icons.Outlined.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Column {
+                        Text(
+                            text = languageViewModel.getString("settings_haptic"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = languageViewModel.getString("settings_haptic_sub"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = isHapticEnabled,
+                    onCheckedChange = { isEnabled ->
+                        com.swiftapp.utils.HapticManager.setHapticEnabled(context, isEnabled)
+                    },
                 )
             }
 
