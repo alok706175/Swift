@@ -24,6 +24,7 @@ import com.swiftapp.ui.viewmodel.ThemeViewModel
 import com.swiftapp.utils.AppLockManager
 import com.swiftapp.utils.FileNamingManager
 import com.swiftapp.utils.HapticManager
+import com.swiftapp.utils.ScannerSettingsManager
 import com.swiftapp.utils.StorageLocationManager
 
 class MainActivity : FragmentActivity() {
@@ -38,6 +39,7 @@ class MainActivity : FragmentActivity() {
         StorageLocationManager.init(this)
         FileNamingManager.init(this)
         AppLockManager.init(this)
+        ScannerSettingsManager.init(this)
         
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()

@@ -2183,11 +2183,27 @@ fun SettingsContent(
     val namingFormat by com.swiftapp.utils.FileNamingManager.namingFormatFlow.collectAsState()
     val autoTimestamp by com.swiftapp.utils.FileNamingManager.autoTimestampFlow.collectAsState()
     val lockType by com.swiftapp.utils.AppLockManager.lockTypeFlow.collectAsState()
+    val defaultScanFilter by com.swiftapp.utils.ScannerSettingsManager.defaultFilterFlow.collectAsState()
+    val isShutterSoundEnabled by com.swiftapp.utils.ScannerSettingsManager.isShutterSoundEnabledFlow.collectAsState()
+    val isAutoEdgeDetectionEnabled by com.swiftapp.utils.ScannerSettingsManager.autoEdgeDetectionFlow.collectAsState()
+
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showSaveLocationDialog by remember { mutableStateOf(false) }
     var showFileNamingDialog by remember { mutableStateOf(false) }
     var showAppLockDialog by remember { mutableStateOf(false) }
     var showPinSetupDialog by remember { mutableStateOf(false) }
+    var showScanFilterDialog by remember { mutableStateOf(false) }
+
+    if (showScanFilterDialog) {
+        com.swiftapp.ui.components.ScanFilterSelectionDialog(
+            currentFilter = defaultScanFilter,
+            languageViewModel = languageViewModel,
+            onFilterSelected = {
+                showScanFilterDialog = false
+            },
+            onDismiss = { showScanFilterDialog = false }
+        )
+    }
 
     if (showLanguageDialog) {
         LanguageSelectionDialog(
@@ -2361,6 +2377,91 @@ fun SettingsContent(
                 subtitle = "${currentLanguage.nativeName} (${currentLanguage.englishName})",
                 onClick = { showLanguageDialog = true },
             )
+        }
+
+        // Scanner & Camera Settings Group
+        SettingsGroupCard(title = languageViewModel.getString("settings_scanner_camera")) {
+            val filterSubtitle = when (defaultScanFilter) {
+                com.swiftapp.data.model.ScanFilter.MAGIC_COLOR -> languageViewModel.getString("filter_magic_color")
+                com.swiftapp.data.model.ScanFilter.BW_DOCUMENT -> languageViewModel.getString("filter_bw")
+                com.swiftapp.data.model.ScanFilter.ORIGINAL -> languageViewModel.getString("filter_original")
+                com.swiftapp.data.model.ScanFilter.GRAYSCALE -> languageViewModel.getString("filter_grayscale")
+            }
+
+            SettingsRowItem(
+                icon = Icons.Outlined.FilterAlt,
+                label = languageViewModel.getString("settings_default_filter"),
+                subtitle = filterSubtitle,
+                onClick = { showScanFilterDialog = true },
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(Icons.Outlined.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Column {
+                        Text(
+                            text = languageViewModel.getString("settings_shutter_sound"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = languageViewModel.getString("settings_shutter_sound_sub"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = isShutterSoundEnabled,
+                    onCheckedChange = { isEnabled ->
+                        com.swiftapp.utils.ScannerSettingsManager.setShutterSoundEnabled(context, isEnabled)
+                    },
+                )
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(Icons.Outlined.Crop, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Column {
+                        Text(
+                            text = languageViewModel.getString("settings_auto_edge"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = languageViewModel.getString("settings_auto_edge_sub"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = isAutoEdgeDetectionEnabled,
+                    onCheckedChange = { isEnabled ->
+                        com.swiftapp.utils.ScannerSettingsManager.setAutoEdgeDetection(context, isEnabled)
+                    },
+                )
+            }
         }
 
         // Storage Group

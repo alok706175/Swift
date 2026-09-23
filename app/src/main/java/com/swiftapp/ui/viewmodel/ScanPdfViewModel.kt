@@ -83,14 +83,18 @@ class ScanPdfViewModel : ViewModel() {
      */
     fun addCapturedImage(context: Context, rawFile: File) {
         viewModelScope.launch(Dispatchers.IO) {
+            com.swiftapp.utils.ScannerSettingsManager.playShutterSound()
             val dimensions = ScanPdfService.getImageDimensions(rawFile)
+            val defaultFilter = com.swiftapp.utils.ScannerSettingsManager.defaultFilterFlow.value
+            val initialCorners = com.swiftapp.utils.ScannerSettingsManager.getInitialCorners()
+
             val newItem = ScanPageItem(
                 id = UUID.randomUUID().toString(),
                 originalImageFile = rawFile,
                 width = dimensions.first,
                 height = dimensions.second,
-                corners = PolygonCorners.DEFAULT,
-                filter = ScanFilter.MAGIC_COLOR,
+                corners = initialCorners,
+                filter = defaultFilter,
                 isProcessing = true
             )
 
@@ -115,6 +119,8 @@ class ScanPdfViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = ScanUiState.Processing("Importing images...", 0.1f)
             val newItems = mutableListOf<ScanPageItem>()
+            val defaultFilter = com.swiftapp.utils.ScannerSettingsManager.defaultFilterFlow.value
+            val initialCorners = com.swiftapp.utils.ScannerSettingsManager.getInitialCorners()
 
             for (uri in uris) {
                 val tempFile = ScanPdfService.copyUriToCacheFile(context, uri) ?: continue
@@ -124,8 +130,8 @@ class ScanPdfViewModel : ViewModel() {
                     originalImageFile = tempFile,
                     width = dimensions.first,
                     height = dimensions.second,
-                    corners = PolygonCorners.DEFAULT,
-                    filter = ScanFilter.MAGIC_COLOR,
+                    corners = initialCorners,
+                    filter = defaultFilter,
                     isProcessing = true
                 )
                 newItems.add(item)
