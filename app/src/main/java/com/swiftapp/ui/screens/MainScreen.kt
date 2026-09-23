@@ -457,12 +457,14 @@ fun MainScreen(
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             val scanningResult = GmsDocumentScanningResult.fromActivityResultIntent(result.data)
             scanningResult?.pdf?.let { pdf ->
-                val file = context.cacheDir.resolve("scanned_${System.currentTimeMillis()}.pdf")
+                val fileName = com.swiftapp.utils.FileNamingManager.generateFileName("Scan")
+                val file = context.cacheDir.resolve(fileName)
                 context.contentResolver.openInputStream(pdf.uri)?.use { input ->
                     file.outputStream().use { output -> input.copyTo(output) }
                 }
-                viewModel.addToRecent(context, file)
-                readerFile = file
+                val savedFile = com.swiftapp.utils.StorageLocationManager.savePdfToStorage(context, file, fileName)
+                viewModel.addToRecent(context, savedFile)
+                readerFile = savedFile
             }
         }
     }
@@ -2178,8 +2180,11 @@ fun SettingsContent(
     val currentLanguage by languageViewModel.currentLanguage.collectAsState()
     val isHapticEnabled by com.swiftapp.utils.HapticManager.isHapticEnabledFlow.collectAsState()
     val currentSaveLoc by com.swiftapp.utils.StorageLocationManager.currentLocationFlow.collectAsState()
+    val namingFormat by com.swiftapp.utils.FileNamingManager.namingFormatFlow.collectAsState()
+    val autoTimestamp by com.swiftapp.utils.FileNamingManager.autoTimestampFlow.collectAsState()
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showSaveLocationDialog by remember { mutableStateOf(false) }
+    var showFileNamingDialog by remember { mutableStateOf(false) }
 
     if (showLanguageDialog) {
         LanguageSelectionDialog(
@@ -2199,6 +2204,18 @@ fun SettingsContent(
                 showSaveLocationDialog = false
             },
             onDismiss = { showSaveLocationDialog = false }
+        )
+    }
+
+    if (showFileNamingDialog) {
+        com.swiftapp.ui.components.FileNamingDialog(
+            currentFormat = namingFormat,
+            autoTimestamp = autoTimestamp,
+            languageViewModel = languageViewModel,
+            onConfirmed = { _, _ ->
+                showFileNamingDialog = false
+            },
+            onDismiss = { showFileNamingDialog = false }
         )
     }
 
@@ -2295,6 +2312,15 @@ fun SettingsContent(
                     },
                 )
             }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+            SettingsRowItem(
+                icon = Icons.Outlined.DriveFileRenameOutline,
+                label = languageViewModel.getString("settings_naming_convention"),
+                subtitle = com.swiftapp.utils.FileNamingManager.getPreviewSample(namingFormat, autoTimestamp),
+                onClick = { showFileNamingDialog = true },
+            )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 

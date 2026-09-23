@@ -135,11 +135,13 @@ fun ScanPdfScreen(
                 val uris = mlPages.map { it.imageUri }
                 viewModel.importGalleryImages(context, uris)
             } ?: scanningResult?.pdf?.let { pdf ->
-                val file = context.cacheDir.resolve("scanned_${System.currentTimeMillis()}.pdf")
+                val fileName = com.swiftapp.utils.FileNamingManager.generateFileName("Scan")
+                val file = context.cacheDir.resolve(fileName)
                 context.contentResolver.openInputStream(pdf.uri)?.use { input ->
                     file.outputStream().use { output -> input.copyTo(output) }
                 }
-                onOpenPdf(file)
+                val savedFile = com.swiftapp.utils.StorageLocationManager.savePdfToStorage(context, file, fileName)
+                onOpenPdf(savedFile)
             }
         }
     }

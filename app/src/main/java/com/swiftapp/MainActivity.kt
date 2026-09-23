@@ -16,6 +16,7 @@ import com.swiftapp.ui.theme.PDFUtilityAppTheme
 import com.swiftapp.ui.viewmodel.LanguageViewModel
 import com.swiftapp.ui.viewmodel.ThemeMode
 import com.swiftapp.ui.viewmodel.ThemeViewModel
+import com.swiftapp.utils.FileNamingManager
 import com.swiftapp.utils.HapticManager
 import com.swiftapp.utils.StorageLocationManager
 
@@ -29,6 +30,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         HapticManager.init(this)
         StorageLocationManager.init(this)
+        FileNamingManager.init(this)
         
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()

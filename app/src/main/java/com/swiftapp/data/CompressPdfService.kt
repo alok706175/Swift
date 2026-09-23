@@ -119,8 +119,8 @@ object CompressPdfService {
             }
 
             val outputDir = context.getExternalFilesDir(null) ?: context.filesDir
-            val baseName = item.fileName.removeSuffix(".pdf")
-            val destinationFile = File(outputDir, "${baseName}_compressed.pdf")
+            val compressedFileName = com.swiftapp.utils.FileNamingManager.generateFileName("Compress", item.fileName)
+            val destinationFile = File(outputDir, compressedFileName)
 
             // Open ParcelFileDescriptor for native rendering
             var tempUnlockedFile: File? = null

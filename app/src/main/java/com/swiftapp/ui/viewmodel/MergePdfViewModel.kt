@@ -25,7 +25,7 @@ class MergePdfViewModel : ViewModel() {
 
     private val _config = MutableStateFlow(
         MergeConfig(
-            outputFileName = "merged_document_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.pdf"
+            outputFileName = com.swiftapp.utils.FileNamingManager.generateFileName("Merged")
         )
     )
     val config: StateFlow<MergeConfig> = _config.asStateFlow()
@@ -140,7 +140,7 @@ class MergePdfViewModel : ViewModel() {
         _uiState.value = MergeUiState.Idle
         _items.value = emptyList()
         _config.value = MergeConfig(
-            outputFileName = "merged_document_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.pdf"
+            outputFileName = com.swiftapp.utils.FileNamingManager.generateFileName("Merged")
         )
     }
 
