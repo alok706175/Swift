@@ -83,6 +83,10 @@ dependencies {
     // ML Kit Document Scanner
     implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0")
 
+    // Biometric Authentication & Fragment
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.2")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 

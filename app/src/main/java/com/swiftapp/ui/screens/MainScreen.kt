@@ -2182,9 +2182,12 @@ fun SettingsContent(
     val currentSaveLoc by com.swiftapp.utils.StorageLocationManager.currentLocationFlow.collectAsState()
     val namingFormat by com.swiftapp.utils.FileNamingManager.namingFormatFlow.collectAsState()
     val autoTimestamp by com.swiftapp.utils.FileNamingManager.autoTimestampFlow.collectAsState()
+    val lockType by com.swiftapp.utils.AppLockManager.lockTypeFlow.collectAsState()
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showSaveLocationDialog by remember { mutableStateOf(false) }
     var showFileNamingDialog by remember { mutableStateOf(false) }
+    var showAppLockDialog by remember { mutableStateOf(false) }
+    var showPinSetupDialog by remember { mutableStateOf(false) }
 
     if (showLanguageDialog) {
         LanguageSelectionDialog(
@@ -2216,6 +2219,34 @@ fun SettingsContent(
                 showFileNamingDialog = false
             },
             onDismiss = { showFileNamingDialog = false }
+        )
+    }
+
+    if (showAppLockDialog) {
+        com.swiftapp.ui.components.AppLockSelectionDialog(
+            currentType = lockType,
+            languageViewModel = languageViewModel,
+            onRequestSetPin = {
+                showAppLockDialog = false
+                showPinSetupDialog = true
+            },
+            onLockTypeChanged = {
+                showAppLockDialog = false
+            },
+            onDismiss = { showAppLockDialog = false }
+        )
+    }
+
+    if (showPinSetupDialog) {
+        com.swiftapp.ui.components.PinSetupDialog(
+            languageViewModel = languageViewModel,
+            onPinSetSuccess = {
+                showPinSetupDialog = false
+                if (lockType == com.swiftapp.utils.AppLockType.NONE) {
+                    com.swiftapp.utils.AppLockManager.setLockType(context, com.swiftapp.utils.AppLockType.PIN)
+                }
+            },
+            onDismiss = { showPinSetupDialog = false }
         )
     }
 
@@ -2360,8 +2391,22 @@ fun SettingsContent(
             )
         }
 
-        // Privacy Group
+        // Privacy & Security Group
         SettingsGroupCard(title = languageViewModel.getString("settings_privacy")) {
+            val lockSubtitle = when (lockType) {
+                com.swiftapp.utils.AppLockType.NONE -> languageViewModel.getString("lock_type_none")
+                com.swiftapp.utils.AppLockType.PIN -> languageViewModel.getString("lock_type_pin")
+                com.swiftapp.utils.AppLockType.BIOMETRIC -> languageViewModel.getString("lock_type_bio")
+                com.swiftapp.utils.AppLockType.BIOMETRIC_OR_PIN -> languageViewModel.getString("lock_type_bio_pin")
+            }
+
+            SettingsRowItem(
+                icon = Icons.Outlined.Security,
+                label = languageViewModel.getString("settings_app_lock"),
+                subtitle = lockSubtitle,
+                onClick = { showAppLockDialog = true },
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
             SettingsRowItem(
                 icon = Icons.Outlined.Info,
                 label = languageViewModel.getString("settings_about"),
