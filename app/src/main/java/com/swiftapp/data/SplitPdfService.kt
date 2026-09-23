@@ -288,43 +288,8 @@ class SplitPdfService(private val context: Context) {
     suspend fun saveToDownloads(file: File, displayName: String? = null): Result<Uri> = withContext(Dispatchers.IO) {
         try {
             val finalName = displayName?.takeIf { it.isNotBlank() } ?: file.name
-            val mimeType = if (file.name.endsWith(".zip", ignoreCase = true)) "application/zip" else "application/pdf"
-            val resolver = context.contentResolver
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, finalName)
-                    put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/SwiftPDF")
-                    put(MediaStore.MediaColumns.IS_PENDING, 1)
-                }
-
-                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-                    ?: return@withContext Result.failure(Exception("Failed to create download entry in MediaStore"))
-
-                resolver.openOutputStream(uri)?.use { outStream ->
-                    file.inputStream().use { inStream ->
-                        inStream.copyTo(outStream)
-                    }
-                }
-
-                contentValues.clear()
-                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
-                resolver.update(uri, contentValues, null, null)
-
-                Result.success(uri)
-            } else {
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val swiftDir = File(downloadsDir, "SwiftPDF").apply { if (!exists()) mkdirs() }
-                val destFile = File(swiftDir, finalName)
-
-                file.inputStream().use { input ->
-                    FileOutputStream(destFile).use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                Result.success(Uri.fromFile(destFile))
-            }
+            val savedFile = com.swiftapp.utils.StorageLocationManager.savePdfToStorage(context, file, finalName)
+            Result.success(Uri.fromFile(savedFile))
         } catch (e: Exception) {
             Result.failure(e)
         }

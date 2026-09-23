@@ -159,34 +159,8 @@ object ProtectPdfService {
     suspend fun savePdfToDownloads(context: Context, file: File): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val fileName = file.name
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val values = ContentValues().apply {
-                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-                    put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
-                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/SwiftPDF")
-                    put(MediaStore.Downloads.IS_PENDING, 1)
-                }
-
-                val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                    ?: throw IllegalStateException("Failed to create MediaStore entry")
-
-                context.contentResolver.openOutputStream(uri)?.use { output ->
-                    file.inputStream().use { input -> input.copyTo(output) }
-                }
-
-                values.clear()
-                values.put(MediaStore.Downloads.IS_PENDING, 0)
-                context.contentResolver.update(uri, values, null, null)
-
-                "Saved to Downloads/SwiftPDF/$fileName"
-            } else {
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val targetDir = File(downloadsDir, "SwiftPDF").apply { if (!exists()) mkdirs() }
-                val targetFile = File(targetDir, fileName)
-
-                file.copyTo(targetFile, overwrite = true)
-                "Saved to ${targetFile.absolutePath}"
-            }
+            val savedFile = com.swiftapp.utils.StorageLocationManager.savePdfToStorage(context, file, fileName)
+            "Saved to ${savedFile.absolutePath}"
         }
     }
 

@@ -2177,7 +2177,9 @@ fun SettingsContent(
     val themeMode by themeViewModel.themeMode.collectAsState()
     val currentLanguage by languageViewModel.currentLanguage.collectAsState()
     val isHapticEnabled by com.swiftapp.utils.HapticManager.isHapticEnabledFlow.collectAsState()
+    val currentSaveLoc by com.swiftapp.utils.StorageLocationManager.currentLocationFlow.collectAsState()
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showSaveLocationDialog by remember { mutableStateOf(false) }
 
     if (showLanguageDialog) {
         LanguageSelectionDialog(
@@ -2186,6 +2188,17 @@ fun SettingsContent(
                 languageViewModel.setLanguage(newLang)
             },
             onDismiss = { showLanguageDialog = false }
+        )
+    }
+
+    if (showSaveLocationDialog) {
+        com.swiftapp.ui.components.SaveLocationSelectionDialog(
+            currentLocation = currentSaveLoc,
+            languageViewModel = languageViewModel,
+            onLocationSelected = {
+                showSaveLocationDialog = false
+            },
+            onDismiss = { showSaveLocationDialog = false }
         )
     }
 
@@ -2295,6 +2308,19 @@ fun SettingsContent(
 
         // Storage Group
         SettingsGroupCard(title = languageViewModel.getString("settings_storage")) {
+            val saveLocSubtitle = when (currentSaveLoc) {
+                com.swiftapp.utils.SaveLocation.SWIFT_FOLDER -> "${languageViewModel.getString("save_loc_swift")} (/Documents/SwiftPDF)"
+                com.swiftapp.utils.SaveLocation.DOWNLOADS -> "${languageViewModel.getString("save_loc_downloads")} (/Download)"
+                com.swiftapp.utils.SaveLocation.DOCUMENTS -> "${languageViewModel.getString("save_loc_documents")} (/Documents)"
+            }
+
+            SettingsRowItem(
+                icon = Icons.Outlined.FolderSpecial,
+                label = languageViewModel.getString("settings_save_location"),
+                subtitle = saveLocSubtitle,
+                onClick = { showSaveLocationDialog = true },
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
             SettingsRowItem(
                 icon = Icons.Outlined.CloudQueue,
                 label = languageViewModel.getString("settings_cloud"),

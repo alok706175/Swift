@@ -173,41 +173,6 @@ class DeletePdfPagesService(private val context: Context) {
     }
 
     private fun saveToUserStorage(sourceFile: File, outputFileName: String): File {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            try {
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, outputFileName)
-                    put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOCUMENTS}/SwiftPDF")
-                }
-                val uri = context.contentResolver.insert(MediaStore.Files.getContentUri("external"), contentValues)
-                if (uri != null) {
-                    context.contentResolver.openOutputStream(uri)?.use { os ->
-                        FileInputStream(sourceFile).use { `is` -> `is`.copyTo(os) }
-                    }
-                }
-            } catch (_: Exception) {}
-        }
-
-        // Direct directory save as well
-        val dir = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
-            "SwiftPDF"
-        ).apply { if (!exists()) mkdirs() }
-
-        var target = File(dir, outputFileName)
-        var count = 1
-        val baseName = outputFileName.removeSuffix(".pdf")
-        while (target.exists()) {
-            target = File(dir, "${baseName}_$count.pdf")
-            count++
-        }
-
-        FileInputStream(sourceFile).use { input ->
-            FileOutputStream(target).use { output ->
-                input.copyTo(output)
-            }
-        }
-        return target
+        return com.swiftapp.utils.StorageLocationManager.savePdfToStorage(context, sourceFile, outputFileName)
     }
 }

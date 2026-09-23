@@ -192,11 +192,13 @@ object PdfHelper {
         // 2. Targeted directory discovery for app & standard public locations
         val searchDirs = ArrayList<File>(8)
         try {
+            searchDirs.add(StorageLocationManager.getTargetDirectory(context))
             searchDirs.add(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS))
             searchDirs.add(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS))
             searchDirs.add(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SwiftPDF"))
             searchDirs.add(File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "SwiftPDF"))
             context.getExternalFilesDir(null)?.let { searchDirs.add(it) }
+            context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)?.let { searchDirs.add(it) }
             searchDirs.add(context.filesDir)
 
             // Direct external root scan only if permission is granted and MediaStore is sparse

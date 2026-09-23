@@ -1168,34 +1168,9 @@ private fun shareCompressPdfFile(context: Context, file: File) {
 
 private fun saveCompressPdfToDownloads(context: Context, file: File): Boolean {
     return try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val contentValues = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, file.name)
-                put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-            }
-            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-            if (uri != null) {
-                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    file.inputStream().use { inputStream ->
-                        inputStream.copyTo(outputStream)
-                    }
-                }
-                Toast.makeText(context, "Saved to Downloads: ${file.name}", Toast.LENGTH_LONG).show()
-                true
-            } else {
-                Toast.makeText(context, "Failed to create destination in Downloads.", Toast.LENGTH_SHORT).show()
-                false
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            if (!downloadsDir.exists()) downloadsDir.mkdirs()
-            val destFile = File(downloadsDir, file.name)
-            file.copyTo(destFile, overwrite = true)
-            Toast.makeText(context, "Saved to Downloads: ${file.name}", Toast.LENGTH_LONG).show()
-            true
-        }
+        val savedFile = com.swiftapp.utils.StorageLocationManager.savePdfToStorage(context, file, file.name)
+        Toast.makeText(context, "Saved to ${savedFile.parentFile?.name ?: "Storage"}: ${savedFile.name}", Toast.LENGTH_LONG).show()
+        true
     } catch (e: Exception) {
         Toast.makeText(context, "Failed to save: ${e.message}", Toast.LENGTH_SHORT).show()
         false
