@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme -->
     <style name="Theme.PDFUtilityApp" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         <item name="android:windowBackground">@color/white</item>
+        <item name="android:statusBarColor">@color/white</item>
+        <item name="android:navigationBarColor">@color/white</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
     </style>
 
-    <!-- Splash Screen theme for androidx.core:core-splashscreen -->
+    <!-- Splash Screen theme for androidx.core:core-splashscreen (transparent icon so custom AnimatedSplashScreen shows directly) -->
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/white</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_swift_app_icon</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_transparent</item>
         <item name="postSplashScreenTheme">@style/Theme.PDFUtilityApp</item>
     </style>
 </resources>
