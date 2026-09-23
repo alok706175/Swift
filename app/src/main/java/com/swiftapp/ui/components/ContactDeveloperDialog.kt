@@ -1,50 +1,39 @@
 package com.swiftapp.ui.components
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.swiftapp.ui.viewmodel.LanguageViewModel
 
-enum class ContactCategory(val label: String, val icon: ImageVector, val subjectPrefix: String) {
-    FEATURE_REQUEST("Feature Idea", Icons.Outlined.Lightbulb, "Feature Request"),
-    GENERAL_FEEDBACK("General Feedback", Icons.Outlined.ChatBubbleOutline, "General Feedback"),
-    QUESTION("Question / Help", Icons.Outlined.HelpOutline, "Question / Help"),
-    COLLABORATION("Collaboration", Icons.Outlined.Handshake, "Collaboration Inquiry")
+enum class FeedbackTopic(val label: String, val icon: ImageVector, val subjectPrefix: String) {
+    FEATURE("Feature Request", Icons.Outlined.Lightbulb, "Feature Request"),
+    FEEDBACK("General Feedback", Icons.Outlined.ChatBubbleOutline, "Feedback"),
+    QUESTION("Question / Help", Icons.Outlined.HelpOutline, "Question"),
+    OTHER("Other", Icons.Outlined.MoreHoriz, "Inquiry")
 }
 
 @Composable
@@ -54,11 +43,11 @@ fun ContactDeveloperDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val developerEmail = "deepaksinghrajput8747@gmail.com"
-    
-    var selectedCategory by remember { mutableStateOf(ContactCategory.FEATURE_REQUEST) }
-    var feedbackMessage by remember { mutableStateOf("") }
-    var userEmailOrName by remember { mutableStateOf("") }
+    val recipientEmail = "deepaksinghrajput8747@gmail.com"
+
+    var selectedTopic by remember { mutableStateOf(FeedbackTopic.FEATURE) }
+    var userNameOrEmail by remember { mutableStateOf("") }
+    var userMessage by remember { mutableStateOf("") }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -66,19 +55,19 @@ fun ContactDeveloperDialog(
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.94f)
-                .fillMaxHeight(0.90f)
-                .padding(12.dp),
-            shape = RoundedCornerShape(28.dp),
+                .fillMaxWidth(0.92f)
+                .wrapContentHeight()
+                .padding(vertical = 16.dp),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Top Header with Close
+                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -86,27 +75,20 @@ fun ContactDeveloperDialog(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(44.dp)
+                                .size(42.dp)
                                 .clip(CircleShape)
-                                .background(
-                                    Brush.linearGradient(
-                                        colors = listOf(
-                                            MaterialTheme.colorScheme.primary,
-                                            MaterialTheme.colorScheme.tertiary
-                                        )
-                                    )
-                                ),
+                                .background(MaterialTheme.colorScheme.primaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.SupportAgent,
+                                imageVector = Icons.Outlined.Mail,
                                 contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                         Column {
@@ -116,7 +98,7 @@ fun ContactDeveloperDialog(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Direct Developer Communication",
+                                text = "We'd love to hear your thoughts",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -135,111 +117,52 @@ fun ContactDeveloperDialog(
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Scrollable Content
+                // Scrollable Form Fields
                 Column(
                     modifier = Modifier
-                        .weight(1f)
+                        .fillMaxWidth()
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // Developer Profile Card (Hidden Email)
-                    Surface(
-                        shape = RoundedCornerShape(18.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Verified,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(
-                                        text = "Official Developer Support",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = Color(0xFF10B981).copy(alpha = 0.15f)
-                                    ) {
-                                        Text(
-                                            text = "Verified",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color(0xFF047857),
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                                Text(
-                                    text = "Direct Support • Swift PDF Team",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-
-                    // Category Filter Chips
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // 1. Topic Selector
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "Choose Topic",
+                            text = "Select Topic",
                             style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            ContactCategory.values().take(2).forEach { category ->
-                                val isSelected = selectedCategory == category
+                            FeedbackTopic.values().take(2).forEach { topic ->
+                                val isSelected = selectedTopic == topic
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                                     border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { selectedCategory = category }
+                                        .clickable { selectedTopic = topic }
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 10.dp),
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.Center
                                     ) {
                                         Icon(
-                                            imageVector = category.icon,
+                                            imageVector = topic.icon,
                                             contentDescription = null,
                                             tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            text = category.label,
+                                            text = topic.label,
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                             color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
@@ -252,30 +175,30 @@ fun ContactDeveloperDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            ContactCategory.values().drop(2).forEach { category ->
-                                val isSelected = selectedCategory == category
+                            FeedbackTopic.values().drop(2).forEach { topic ->
+                                val isSelected = selectedTopic == topic
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
                                     border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clickable { selectedCategory = category }
+                                        .clickable { selectedTopic = topic }
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 10.dp),
+                                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.Center
                                     ) {
                                         Icon(
-                                            imageVector = category.icon,
+                                            imageVector = topic.icon,
                                             contentDescription = null,
                                             tint = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            text = category.label,
+                                            text = topic.label,
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                             color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
@@ -286,120 +209,97 @@ fun ContactDeveloperDialog(
                         }
                     }
 
-                    // Optional Name / Sender Tag
+                    // 2. Name or Email (Optional)
                     OutlinedTextField(
-                        value = userEmailOrName,
-                        onValueChange = { userEmailOrName = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Your Name or Contact Info (Optional)") },
-                        placeholder = { Text("e.g. John Doe") },
+                        value = userNameOrEmail,
+                        onValueChange = { userNameOrEmail = it },
+                        label = { Text("Your Name or Email (Optional)") },
+                        placeholder = { Text("How should we reply to you?") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp),
-                        leadingIcon = {
-                            Icon(Icons.Outlined.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        }
+                        modifier = Modifier.fillMaxWidth()
                     )
 
-                    // Message Input Area
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        OutlinedTextField(
-                            value = feedbackMessage,
-                            onValueChange = { if (it.length <= 1500) feedbackMessage = it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 130.dp),
-                            label = { Text("Your Message") },
-                            placeholder = {
-                                Text(
-                                    text = when (selectedCategory) {
-                                        ContactCategory.FEATURE_REQUEST -> "Describe the feature you'd love to see in Swift PDF..."
-                                        ContactCategory.GENERAL_FEEDBACK -> "Tell us about your experience using Swift PDF..."
-                                        ContactCategory.QUESTION -> "Ask any question about using tools or privacy..."
-                                        ContactCategory.COLLABORATION -> "Share your ideas or proposal for collaboration..."
-                                    },
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            },
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            Text(
-                                text = "${feedbackMessage.length} / 1500",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    // 3. Message Body (Required)
+                    OutlinedTextField(
+                        value = userMessage,
+                        onValueChange = { userMessage = it },
+                        label = { Text("Message") },
+                        placeholder = { Text("Write your suggestions, feature request, or feedback here...") },
+                        minLines = 4,
+                        maxLines = 6,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
-                // Bottom Action Buttons
-                Column(
+                // Action Buttons
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Send Email Button
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(languageViewModel.getString("btn_cancel"))
+                    }
+
                     Button(
                         onClick = {
-                            val subject = "[Swift PDF - ${selectedCategory.subjectPrefix}] v$versionName"
-                            val body = buildString {
-                                if (userEmailOrName.isNotBlank()) {
-                                    append("From: ${userEmailOrName.trim()}\n\n")
+                            if (userMessage.isBlank()) {
+                                Toast.makeText(context, "Please enter your message first", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+
+                            val subject = "[Swift PDF] ${selectedTopic.subjectPrefix} (v$versionName)"
+                            val emailBody = buildString {
+                                if (userNameOrEmail.isNotBlank()) {
+                                    append("From: ${userNameOrEmail.trim()}\n")
                                 }
-                                append("Topic: ${selectedCategory.label}\n\n")
-                                if (feedbackMessage.isNotBlank()) {
-                                    append("Message:\n")
-                                    append(feedbackMessage.trim())
-                                    append("\n\n")
-                                }
-                                append("------------------------------\n")
-                                append("Sent from Swift PDF v$versionName\n")
+                                append("Topic: ${selectedTopic.label}\n\n")
+                                append("Message:\n")
+                                append(userMessage.trim())
+                                append("\n\n------------------------------\n")
+                                append("App Version: Swift PDF v$versionName\n")
                                 append("------------------------------")
                             }
 
-                            val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                            val intent = Intent(Intent.ACTION_SENDTO).apply {
                                 data = Uri.parse("mailto:")
-                                putExtra(Intent.EXTRA_EMAIL, arrayOf(developerEmail))
+                                putExtra(Intent.EXTRA_EMAIL, arrayOf(recipientEmail))
                                 putExtra(Intent.EXTRA_SUBJECT, subject)
-                                putExtra(Intent.EXTRA_TEXT, body)
+                                putExtra(Intent.EXTRA_TEXT, emailBody)
                             }
 
                             try {
-                                context.startActivity(Intent.createChooser(emailIntent, "Send Message to Developer"))
+                                context.startActivity(Intent.createChooser(intent, "Send Feedback"))
                                 onDismiss()
                             } catch (e: Exception) {
                                 Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.weight(1.5f)
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Send Message to Developer", fontWeight = FontWeight.SemiBold)
-                    }
-
-                    // GitHub Link Button
-                    OutlinedButton(
-                        onClick = {
-                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/alok706175/Swift"))
-                            try {
-                                context.startActivity(browserIntent)
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "Cannot open browser", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Visit GitHub Repository", fontWeight = FontWeight.Medium)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Send Message", fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
