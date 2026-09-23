@@ -54,7 +54,7 @@ fun BugReportDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val targetEmail = "alokkumar706175@gmail.com"
+    val targetEmail = "deepaksinghrajput8747@gmail.com"
 
     val deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}"
     val androidVersion = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
@@ -133,7 +133,7 @@ Swift PDF Diagnostic Information:
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "To: $targetEmail",
+                            text = "Swift Technical Support Team",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium

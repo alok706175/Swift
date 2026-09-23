@@ -54,7 +54,7 @@ fun ContactDeveloperDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val developerEmail = "alokkumar706175@gmail.com"
+    val developerEmail = "deepaksinghrajput8747@gmail.com"
     
     var selectedCategory by remember { mutableStateOf(ContactCategory.FEATURE_REQUEST) }
     var feedbackMessage by remember { mutableStateOf("") }
@@ -145,7 +145,7 @@ fun ContactDeveloperDialog(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Developer Profile Card
+                    // Developer Profile Card (Hidden Email)
                     Surface(
                         shape = RoundedCornerShape(18.dp),
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
@@ -164,11 +164,11 @@ fun ContactDeveloperDialog(
                                     .background(MaterialTheme.colorScheme.primary),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = "AK",
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    fontSize = 17.sp
+                                Icon(
+                                    imageVector = Icons.Outlined.Verified,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                             Column(modifier = Modifier.weight(1f)) {
@@ -177,7 +177,7 @@ fun ContactDeveloperDialog(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Text(
-                                        text = "Alok Kumar",
+                                        text = "Official Developer Support",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -186,7 +186,7 @@ fun ContactDeveloperDialog(
                                         color = Color(0xFF10B981).copy(alpha = 0.15f)
                                     ) {
                                         Text(
-                                            text = "Developer",
+                                            text = "Verified",
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.SemiBold,
                                             color = Color(0xFF047857),
@@ -195,30 +195,10 @@ fun ContactDeveloperDialog(
                                     }
                                 }
                                 Text(
-                                    text = developerEmail,
+                                    text = "Direct Support • Swift PDF Team",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Medium
-                                )
-                            }
-
-                            // Copy Email Button
-                            IconButton(
-                                onClick = {
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    clipboard.setPrimaryClip(ClipData.newPlainText("Developer Email", developerEmail))
-                                    Toast.makeText(context, "Email copied to clipboard!", Toast.LENGTH_SHORT).show()
-                                },
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surface)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.ContentCopy,
-                                    contentDescription = "Copy Email",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
@@ -401,7 +381,7 @@ fun ContactDeveloperDialog(
                     ) {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Send to $developerEmail", fontWeight = FontWeight.SemiBold)
+                        Text(text = "Send Message to Developer", fontWeight = FontWeight.SemiBold)
                     }
 
                     // GitHub Link Button
