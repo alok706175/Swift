@@ -298,6 +298,12 @@ class ScanPdfViewModel : ViewModel() {
                         pageCount = pagesToExport.size,
                         fileSize = outputFile.length()
                     )
+                    com.swiftapp.utils.NotificationHelper.showOperationCompleteNotification(
+                        context = context,
+                        title = "Scan to PDF Complete",
+                        message = "${outputFile.name} saved (${pagesToExport.size} pages)",
+                        file = outputFile
+                    )
                 },
                 onFailure = { error ->
                     _uiState.value = ScanUiState.Error(error.localizedMessage ?: "Failed to compile scanned PDF")

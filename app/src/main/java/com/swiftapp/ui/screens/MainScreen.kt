@@ -2186,6 +2186,8 @@ fun SettingsContent(
     val defaultScanFilter by com.swiftapp.utils.ScannerSettingsManager.defaultFilterFlow.collectAsState()
     val isShutterSoundEnabled by com.swiftapp.utils.ScannerSettingsManager.isShutterSoundEnabledFlow.collectAsState()
     val isAutoEdgeDetectionEnabled by com.swiftapp.utils.ScannerSettingsManager.autoEdgeDetectionFlow.collectAsState()
+    val isNotificationEnabled by com.swiftapp.utils.NotificationSettingsManager.isNotificationEnabledFlow.collectAsState()
+    val storagePermState by com.swiftapp.utils.StoragePermissionManager.permissionStateFlow.collectAsState()
 
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showSaveLocationDialog by remember { mutableStateOf(false) }
@@ -2193,6 +2195,15 @@ fun SettingsContent(
     var showAppLockDialog by remember { mutableStateOf(false) }
     var showPinSetupDialog by remember { mutableStateOf(false) }
     var showScanFilterDialog by remember { mutableStateOf(false) }
+    var showStoragePermissionDialog by remember { mutableStateOf(false) }
+
+    if (showStoragePermissionDialog) {
+        com.swiftapp.ui.components.StoragePermissionDialog(
+            permissionState = storagePermState,
+            languageViewModel = languageViewModel,
+            onDismiss = { showStoragePermissionDialog = false }
+        )
+    }
 
     if (showScanFilterDialog) {
         com.swiftapp.ui.components.ScanFilterSelectionDialog(
@@ -2315,14 +2326,30 @@ fun SettingsContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     Icon(Icons.Outlined.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text(languageViewModel.getString("settings_notification"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Column {
+                        Text(
+                            text = languageViewModel.getString("settings_notification"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = languageViewModel.getString("settings_notification_sub"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-                var notifyEnabled by remember { mutableStateOf(true) }
                 Switch(
-                    checked = notifyEnabled,
-                    onCheckedChange = { notifyEnabled = it },
+                    checked = isNotificationEnabled,
+                    onCheckedChange = { isEnabled ->
+                        com.swiftapp.utils.NotificationSettingsManager.setNotificationEnabled(context, isEnabled)
+                    },
                 )
             }
 
@@ -2466,6 +2493,22 @@ fun SettingsContent(
 
         // Storage Group
         SettingsGroupCard(title = languageViewModel.getString("settings_storage")) {
+            val storagePermSubtitle = when (storagePermState) {
+                com.swiftapp.utils.StoragePermissionState.GRANTED -> languageViewModel.getString("perm_status_granted")
+                com.swiftapp.utils.StoragePermissionState.LIMITED -> languageViewModel.getString("perm_status_limited")
+                com.swiftapp.utils.StoragePermissionState.DENIED -> languageViewModel.getString("perm_status_action_required")
+            }
+            val isPermGranted = storagePermState == com.swiftapp.utils.StoragePermissionState.GRANTED
+
+            SettingsRowItem(
+                icon = if (isPermGranted) Icons.Outlined.CheckCircle else Icons.Outlined.FolderShared,
+                label = languageViewModel.getString("settings_storage_permission"),
+                subtitle = storagePermSubtitle,
+                onClick = { showStoragePermissionDialog = true },
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
             val saveLocSubtitle = when (currentSaveLoc) {
                 com.swiftapp.utils.SaveLocation.SWIFT_FOLDER -> "${languageViewModel.getString("save_loc_swift")} (/Documents/SwiftPDF)"
                 com.swiftapp.utils.SaveLocation.DOWNLOADS -> "${languageViewModel.getString("save_loc_downloads")} (/Download)"

@@ -106,6 +106,19 @@ class CompressPdfViewModel : ViewModel() {
             }
 
             _uiState.value = CompressUiState.Success(results)
+            val firstFile = results.firstOrNull()?.compressedFile
+            val notifMsg = if (results.size == 1) {
+                val r = results[0]
+                "${r.originalItem.fileName} reduced by ${r.reductionPercent}%"
+            } else {
+                "${results.size} files compressed successfully"
+            }
+            com.swiftapp.utils.NotificationHelper.showOperationCompleteNotification(
+                context = context,
+                title = "PDF Compression Complete",
+                message = notifMsg,
+                file = firstFile
+            )
         }
     }
 

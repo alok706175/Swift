@@ -40,6 +40,9 @@ class MainActivity : FragmentActivity() {
         FileNamingManager.init(this)
         AppLockManager.init(this)
         ScannerSettingsManager.init(this)
+        com.swiftapp.utils.NotificationSettingsManager.init(this)
+        com.swiftapp.utils.NotificationHelper.init(this)
+        com.swiftapp.utils.StoragePermissionManager.checkPermission(this)
         
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
@@ -85,6 +88,11 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        com.swiftapp.utils.StoragePermissionManager.checkPermission(this)
     }
 }
 

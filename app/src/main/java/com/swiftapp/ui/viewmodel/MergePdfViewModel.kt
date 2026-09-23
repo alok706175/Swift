@@ -130,6 +130,12 @@ class MergePdfViewModel : ViewModel() {
                     fileSizeBytes = file.length(),
                     totalPages = totalPages,
                 )
+                com.swiftapp.utils.NotificationHelper.showOperationCompleteNotification(
+                    context = context,
+                    title = "PDF Merge Complete",
+                    message = "${file.name} created successfully with $totalPages pages",
+                    file = file
+                )
             }.onFailure { error ->
                 _uiState.value = MergeUiState.Error(error.localizedMessage ?: "Merge failed due to an unknown error.")
             }
