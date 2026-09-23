@@ -2189,6 +2189,21 @@ fun SettingsContent(
     val isNotificationEnabled by com.swiftapp.utils.NotificationSettingsManager.isNotificationEnabledFlow.collectAsState()
     val storagePermState by com.swiftapp.utils.StoragePermissionManager.permissionStateFlow.collectAsState()
 
+    val packageInfo = remember {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        } catch (e: Exception) {
+            null
+        }
+    }
+    val versionName = packageInfo?.versionName ?: "1.0.0"
+    val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+        packageInfo?.longVersionCode ?: 102L
+    } else {
+        @Suppress("DEPRECATION")
+        packageInfo?.versionCode?.toLong() ?: 102L
+    }
+
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showSaveLocationDialog by remember { mutableStateOf(false) }
     var showFileNamingDialog by remember { mutableStateOf(false) }
@@ -2196,6 +2211,34 @@ fun SettingsContent(
     var showPinSetupDialog by remember { mutableStateOf(false) }
     var showScanFilterDialog by remember { mutableStateOf(false) }
     var showStoragePermissionDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showContactDevDialog by remember { mutableStateOf(false) }
+
+    if (showAboutDialog) {
+        com.swiftapp.ui.components.AboutAppDialog(
+            versionName = versionName,
+            versionCode = versionCode,
+            languageViewModel = languageViewModel,
+            onDismiss = { showAboutDialog = false }
+        )
+    }
+
+    if (showPrivacyDialog) {
+        com.swiftapp.ui.components.PrivacyPolicyDialog(
+            languageViewModel = languageViewModel,
+            onDismiss = { showPrivacyDialog = false }
+        )
+    }
+
+    if (showContactDevDialog) {
+        com.swiftapp.ui.components.ContactDeveloperDialog(
+            versionName = versionName,
+            versionCode = versionCode,
+            languageViewModel = languageViewModel,
+            onDismiss = { showContactDevDialog = false }
+        )
+    }
 
     if (showStoragePermissionDialog) {
         com.swiftapp.ui.components.StoragePermissionDialog(
@@ -2552,10 +2595,45 @@ fun SettingsContent(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
             SettingsRowItem(
+                icon = Icons.Outlined.PrivacyTip,
+                label = languageViewModel.getString("settings_privacy_terms"),
+                subtitle = languageViewModel.getString("settings_privacy_terms_sub"),
+                onClick = { showPrivacyDialog = true },
+            )
+        }
+
+        // About & Support Group
+        SettingsGroupCard(title = languageViewModel.getString("settings_support_group")) {
+            SettingsRowItem(
                 icon = Icons.Outlined.Info,
                 label = languageViewModel.getString("settings_about"),
-                subtitle = languageViewModel.getString("settings_version"),
-                onClick = {},
+                subtitle = "Swift v$versionName (Build $versionCode)",
+                onClick = { showAboutDialog = true },
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            SettingsRowItem(
+                icon = Icons.Outlined.Share,
+                label = languageViewModel.getString("settings_share_app"),
+                subtitle = languageViewModel.getString("settings_share_app_sub"),
+                onClick = {
+                    val sendIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(
+                            Intent.EXTRA_TEXT,
+                            "Check out Swift PDF - All-in-one offline PDF tools for Android! Merge, Compress, Scan, E-Sign and Protect PDFs safely: https://github.com/alok706175/Swift"
+                        )
+                        type = "text/plain"
+                    }
+                    val shareIntent = Intent.createChooser(sendIntent, "Share Swift PDF")
+                    context.startActivity(shareIntent)
+                },
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            SettingsRowItem(
+                icon = Icons.Outlined.BugReport,
+                label = languageViewModel.getString("settings_contact_dev"),
+                subtitle = languageViewModel.getString("settings_contact_dev_sub"),
+                onClick = { showContactDevDialog = true },
             )
         }
     }
