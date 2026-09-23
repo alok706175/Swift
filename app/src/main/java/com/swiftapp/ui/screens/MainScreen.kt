@@ -2214,6 +2214,7 @@ fun SettingsContent(
     var showAboutDialog by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showContactDevDialog by remember { mutableStateOf(false) }
+    var showBugReportDialog by remember { mutableStateOf(false) }
 
     if (showAboutDialog) {
         com.swiftapp.ui.components.AboutAppDialog(
@@ -2234,9 +2235,17 @@ fun SettingsContent(
     if (showContactDevDialog) {
         com.swiftapp.ui.components.ContactDeveloperDialog(
             versionName = versionName,
-            versionCode = versionCode,
             languageViewModel = languageViewModel,
             onDismiss = { showContactDevDialog = false }
+        )
+    }
+
+    if (showBugReportDialog) {
+        com.swiftapp.ui.components.BugReportDialog(
+            versionName = versionName,
+            versionCode = versionCode,
+            languageViewModel = languageViewModel,
+            onDismiss = { showBugReportDialog = false }
         )
     }
 
@@ -2628,12 +2637,18 @@ fun SettingsContent(
                     context.startActivity(shareIntent)
                 },
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
             SettingsRowItem(
-                icon = Icons.Outlined.BugReport,
+                icon = Icons.Outlined.Email,
                 label = languageViewModel.getString("settings_contact_dev"),
                 subtitle = languageViewModel.getString("settings_contact_dev_sub"),
                 onClick = { showContactDevDialog = true },
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            SettingsRowItem(
+                icon = Icons.Outlined.BugReport,
+                label = languageViewModel.getString("settings_bug_report"),
+                subtitle = languageViewModel.getString("settings_bug_report_sub"),
+                onClick = { showBugReportDialog = true },
             )
         }
     }
