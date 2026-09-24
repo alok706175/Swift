@@ -31,11 +31,15 @@ import com.swiftapp.utils.HapticManager
 @Composable
 fun PinSetupDialog(
     languageViewModel: LanguageViewModel,
+    targetLength: Int = 4,
     onPinSetSuccess: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val hasExistingPin = remember { AppLockManager.hasPinSet(context) }
+    val existingPinLength = remember { AppLockManager.getPinLength(context) }
+    var selectedLength by remember { mutableIntStateOf(targetLength) }
+
     // Step: 0 = Verify Old PIN, 1 = Enter New PIN, 2 = Confirm New PIN
     var step by remember { mutableIntStateOf(if (hasExistingPin) 0 else 1) }
     var oldPin by remember { mutableStateOf("") }
@@ -43,6 +47,7 @@ fun PinSetupDialog(
     var confirmPin by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    val activeDotCount = if (step == 0) existingPinLength else selectedLength
     val currentPin = when (step) {
         0 -> oldPin
         1 -> firstPin
@@ -76,10 +81,10 @@ fun PinSetupDialog(
 
         when (step) {
             0 -> {
-                if (oldPin.length < 4) {
+                if (oldPin.length < existingPinLength) {
                     val updated = oldPin + digit
                     oldPin = updated
-                    if (updated.length == 4) {
+                    if (updated.length == existingPinLength) {
                         if (AppLockManager.verifyPin(updated)) {
                             HapticManager.success()
                             step = 1
@@ -92,22 +97,22 @@ fun PinSetupDialog(
                 }
             }
             1 -> {
-                if (firstPin.length < 4) {
+                if (firstPin.length < selectedLength) {
                     val updated = firstPin + digit
                     firstPin = updated
-                    if (updated.length == 4) {
+                    if (updated.length == selectedLength) {
                         step = 2
                     }
                 }
             }
             2 -> {
-                if (confirmPin.length < 4) {
+                if (confirmPin.length < selectedLength) {
                     val updated = confirmPin + digit
                     confirmPin = updated
-                    if (updated.length == 4) {
+                    if (updated.length == selectedLength) {
                         if (updated == firstPin) {
                             HapticManager.success()
-                            AppLockManager.setPin(context, updated)
+                            AppLockManager.setPin(context, updated, selectedLength)
                             onPinSetSuccess()
                             onDismiss()
                         } else {
@@ -193,13 +198,13 @@ fun PinSetupDialog(
                         Column {
                             val title = when (step) {
                                 0 -> "Enter Current PIN"
-                                1 -> languageViewModel.getString("pin_set_title")
-                                else -> languageViewModel.getString("pin_confirm_title")
+                                1 -> if (selectedLength == 6) "Set 6-Digit PIN" else "Set 4-Digit PIN"
+                                else -> "Confirm $selectedLength-Digit PIN"
                             }
                             val desc = when (step) {
                                 0 -> "Verify your identity before setting a new PIN"
-                                1 -> languageViewModel.getString("pin_set_desc")
-                                else -> languageViewModel.getString("pin_confirm_desc")
+                                1 -> "Enter a $selectedLength-digit security PIN"
+                                else -> "Re-enter your $selectedLength-digit PIN"
                             }
                             Text(
                                 text = title,
@@ -223,13 +228,63 @@ fun PinSetupDialog(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 
-                // 4 PIN Dots Indicator
+                // Length Selector (Visible in Step 1 if user wants to switch between 4 and 6 digits)
+                if (step == 1) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ) {
+                            Row(modifier = Modifier.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Surface(
+                                    onClick = {
+                                        selectedLength = 4
+                                        firstPin = ""
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (selectedLength == 4) MaterialTheme.colorScheme.primary else Color.Transparent
+                                ) {
+                                    Text(
+                                        text = "4-Digit PIN",
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (selectedLength == 4) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Surface(
+                                    onClick = {
+                                        selectedLength = 6
+                                        firstPin = ""
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (selectedLength == 6) MaterialTheme.colorScheme.primary else Color.Transparent
+                                ) {
+                                    Text(
+                                        text = "6-Digit PIN",
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (selectedLength == 6) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // PIN Dots Indicator (4 or 6 dots)
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(vertical = 12.dp)
+                    modifier = Modifier.padding(vertical = 8.dp)
                 ) {
-                    for (i in 0 until 4) {
+                    for (i in 0 until activeDotCount) {
                         val isFilled = i < currentPin.length
                         val dotColor = if (errorMessage != null) {
                             MaterialTheme.colorScheme.error

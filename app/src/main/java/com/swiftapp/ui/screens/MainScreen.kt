@@ -2532,7 +2532,7 @@ fun SettingsContent(
             onPinSetSuccess = {
                 showPinSetupDialog = false
                 if (lockType == com.swiftapp.utils.AppLockType.NONE) {
-                    com.swiftapp.utils.AppLockManager.setLockType(context, com.swiftapp.utils.AppLockType.PIN)
+                    com.swiftapp.utils.AppLockManager.setLockType(context, com.swiftapp.utils.AppLockType.PIN_4)
                 }
             },
             onDismiss = { showPinSetupDialog = false }
@@ -2972,9 +2972,11 @@ fun SettingsContent(
         SettingsGroupCard(title = languageViewModel.getString("settings_privacy")) {
             val lockSubtitle = when (lockType) {
                 com.swiftapp.utils.AppLockType.NONE -> languageViewModel.getString("lock_type_none")
-                com.swiftapp.utils.AppLockType.PIN -> languageViewModel.getString("lock_type_pin")
-                com.swiftapp.utils.AppLockType.BIOMETRIC -> languageViewModel.getString("lock_type_bio")
+                com.swiftapp.utils.AppLockType.PIN_4 -> languageViewModel.getString("lock_type_pin_4")
+                com.swiftapp.utils.AppLockType.PIN_6 -> languageViewModel.getString("lock_type_pin_6")
+                com.swiftapp.utils.AppLockType.PATTERN -> languageViewModel.getString("lock_type_pattern")
                 com.swiftapp.utils.AppLockType.BIOMETRIC_OR_PIN -> languageViewModel.getString("lock_type_bio_pin")
+                com.swiftapp.utils.AppLockType.DEVICE_CREDENTIAL -> languageViewModel.getString("lock_type_device")
             }
 
             SettingsRowItem(

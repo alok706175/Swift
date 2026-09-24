@@ -31,8 +31,19 @@ import com.swiftapp.utils.StorageLocationManager
 import com.swiftapp.utils.StoragePermissionManager
 
 class MainActivity : FragmentActivity() {
+    private val screenOffReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+            if (intent?.action == android.content.Intent.ACTION_SCREEN_OFF) {
+                AppLockManager.onScreenClosed()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val filter = android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_OFF)
+        registerReceiver(screenOffReceiver, filter)
+
         HapticManager.init(this)
         StorageLocationManager.init(this)
         FileNamingManager.init(this)
@@ -100,6 +111,13 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            unregisterReceiver(screenOffReceiver)
+        } catch (_: Exception) {}
     }
 
     override fun onStart() {
