@@ -2950,22 +2950,6 @@ fun SettingsContent(
                 iconBgColor = Color(0xFF3B82F6).copy(alpha = 0.15f),
                 onClick = { showSaveLocationDialog = true },
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-            SettingsRowItem(
-                icon = Icons.Outlined.CloudQueue,
-                label = languageViewModel.getString("settings_cloud"),
-                iconTint = Color(0xFF64748B),
-                iconBgColor = Color(0xFF64748B).copy(alpha = 0.15f),
-                onClick = {},
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-            SettingsRowItem(
-                icon = Icons.Outlined.FolderZip,
-                label = languageViewModel.getString("settings_dropbox"),
-                iconTint = Color(0xFF64748B),
-                iconBgColor = Color(0xFF64748B).copy(alpha = 0.15f),
-                onClick = {},
-            )
         }
 
         // Privacy & Security Group
