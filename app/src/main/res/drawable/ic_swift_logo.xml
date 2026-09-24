@@ -1,46 +1,11 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="200dp"
-    android:height="200dp"
-    android:viewportWidth="200"
-    android:viewportHeight="200">
+    android:width="256dp"
+    android:height="256dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
 
-    <!-- Stroke 1: Large Upper Wing -->
+    <!-- Swift Bird Silhouette -->
     <path
-        android:pathData="M 36,56 C 68,30 122,24 166,38"
-        android:strokeColor="#FF6B4A"
-        android:strokeWidth="9.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-
-    <!-- Stroke 2: Second Thinner Upper Wing -->
-    <path
-        android:pathData="M 54,76 C 80,54 124,48 152,62"
-        android:strokeColor="#FF6B4A"
-        android:strokeWidth="6.8"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-
-    <!-- Stroke 3: Central Body & 'S' Movement -->
-    <path
-        android:pathData="M 42,116 C 68,98 98,76 126,84 C 142,90 158,102 164,92"
-        android:strokeColor="#FF6B4A"
-        android:strokeWidth="8.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-
-    <!-- Stroke 4: Lower Wing / Tail -->
-    <path
-        android:pathData="M 78,126 C 62,148 44,162 28,168"
-        android:strokeColor="#FF6B4A"
-        android:strokeWidth="8.0"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-
-    <!-- Stroke 5: Sleek Head & Beak -->
-    <path
-        android:pathData="M 154,74 Q 174,66 182,56"
-        android:strokeColor="#FF6B4A"
-        android:strokeWidth="7.0"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:fillColor="#FF5E3A"
+        android:pathData="M144.7,38 c84.4,57.4 57.1,120.7 57.1,120.7 s24,27.1 14.3,50.8 c0,0 -9.9,-16.6 -26.5,-16.6 c-16,0 -25.4,16.6 -57.6,16.6 c-71.7,0 -105.6,-59.9 -105.6,-59.9 C91,192.1 135.1,162 135.1,162 c-29.1,-16.9 -91,-97.7 -91,-97.7 c53.9,45.9 77.2,58 77.2,58 c-13.9,-11.5 -52.9,-67.7 -52.9,-67.7 c31.2,31.6 93.2,75.7 93.2,75.7 C179.2,81.5 144.7,38 144.7,38 Z" />
 </vector>

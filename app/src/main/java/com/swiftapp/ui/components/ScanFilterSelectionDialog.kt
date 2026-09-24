@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.Contrast
+import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.FilterVintage
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Tune
@@ -132,6 +133,15 @@ fun ScanFilterSelectionDialog(
                         icon = Icons.Outlined.FilterVintage,
                         isSelected = selectedFilter == ScanFilter.GRAYSCALE,
                         onClick = { selectedFilter = ScanFilter.GRAYSCALE }
+                    )
+
+                    FilterOptionItem(
+                        title = "Whiteboard",
+                        subtitle = "Glare-free clean high contrast for boards & text",
+                        badge = null,
+                        icon = Icons.Outlined.Dashboard,
+                        isSelected = selectedFilter == ScanFilter.WHITEBOARD,
+                        onClick = { selectedFilter = ScanFilter.WHITEBOARD }
                     )
                 }
 

@@ -3,13 +3,14 @@ package com.swiftapp.ui.components
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.swiftapp.ui.viewmodel.LanguageViewModel
 import com.swiftapp.utils.AppLockManager
+import com.swiftapp.utils.HapticManager
 
 @Composable
 fun PinSetupDialog(
@@ -33,12 +35,19 @@ fun PinSetupDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    var step by remember { mutableIntStateOf(1) } // 1 = Enter New PIN, 2 = Confirm PIN
+    val hasExistingPin = remember { AppLockManager.hasPinSet(context) }
+    // Step: 0 = Verify Old PIN, 1 = Enter New PIN, 2 = Confirm New PIN
+    var step by remember { mutableIntStateOf(if (hasExistingPin) 0 else 1) }
+    var oldPin by remember { mutableStateOf("") }
     var firstPin by remember { mutableStateOf("") }
     var confirmPin by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val currentPin = if (step == 1) firstPin else confirmPin
+    val currentPin = when (step) {
+        0 -> oldPin
+        1 -> firstPin
+        else -> confirmPin
+    }
 
     // Shake animation on error
     val shakeOffset = remember { Animatable(0f) }
@@ -63,26 +72,49 @@ fun PinSetupDialog(
 
     fun handleDigit(digit: String) {
         errorMessage = null
-        if (step == 1) {
-            if (firstPin.length < 4) {
-                val updated = firstPin + digit
-                firstPin = updated
-                if (updated.length == 4) {
-                    step = 2
+        HapticManager.light()
+
+        when (step) {
+            0 -> {
+                if (oldPin.length < 4) {
+                    val updated = oldPin + digit
+                    oldPin = updated
+                    if (updated.length == 4) {
+                        if (AppLockManager.verifyPin(updated)) {
+                            HapticManager.success()
+                            step = 1
+                        } else {
+                            HapticManager.error()
+                            errorMessage = languageViewModel.getString("pin_incorrect_error")
+                            oldPin = ""
+                        }
+                    }
                 }
             }
-        } else {
-            if (confirmPin.length < 4) {
-                val updated = confirmPin + digit
-                confirmPin = updated
-                if (updated.length == 4) {
-                    if (updated == firstPin) {
-                        AppLockManager.setPin(context, updated)
-                        onPinSetSuccess()
-                        onDismiss()
-                    } else {
-                        errorMessage = languageViewModel.getString("pin_mismatch_error")
-                        confirmPin = ""
+            1 -> {
+                if (firstPin.length < 4) {
+                    val updated = firstPin + digit
+                    firstPin = updated
+                    if (updated.length == 4) {
+                        step = 2
+                    }
+                }
+            }
+            2 -> {
+                if (confirmPin.length < 4) {
+                    val updated = confirmPin + digit
+                    confirmPin = updated
+                    if (updated.length == 4) {
+                        if (updated == firstPin) {
+                            HapticManager.success()
+                            AppLockManager.setPin(context, updated)
+                            onPinSetSuccess()
+                            onDismiss()
+                        } else {
+                            HapticManager.error()
+                            errorMessage = languageViewModel.getString("pin_mismatch_error")
+                            confirmPin = ""
+                        }
                     }
                 }
             }
@@ -91,17 +123,29 @@ fun PinSetupDialog(
 
     fun handleBackspace() {
         errorMessage = null
-        if (step == 1) {
-            if (firstPin.isNotEmpty()) {
-                firstPin = firstPin.dropLast(1)
+        HapticManager.light()
+
+        when (step) {
+            0 -> {
+                if (oldPin.isNotEmpty()) {
+                    oldPin = oldPin.dropLast(1)
+                }
             }
-        } else {
-            if (confirmPin.isNotEmpty()) {
-                confirmPin = confirmPin.dropLast(1)
-            } else {
-                // Return to step 1
-                step = 1
-                firstPin = ""
+            1 -> {
+                if (firstPin.isNotEmpty()) {
+                    firstPin = firstPin.dropLast(1)
+                } else if (hasExistingPin) {
+                    step = 0
+                    oldPin = ""
+                }
+            }
+            2 -> {
+                if (confirmPin.isNotEmpty()) {
+                    confirmPin = confirmPin.dropLast(1)
+                } else {
+                    step = 1
+                    firstPin = ""
+                }
             }
         }
     }
@@ -147,13 +191,23 @@ fun PinSetupDialog(
                             }
                         }
                         Column {
+                            val title = when (step) {
+                                0 -> "Enter Current PIN"
+                                1 -> languageViewModel.getString("pin_set_title")
+                                else -> languageViewModel.getString("pin_confirm_title")
+                            }
+                            val desc = when (step) {
+                                0 -> "Verify your identity before setting a new PIN"
+                                1 -> languageViewModel.getString("pin_set_desc")
+                                else -> languageViewModel.getString("pin_confirm_desc")
+                            }
                             Text(
-                                text = if (step == 1) languageViewModel.getString("pin_set_title") else languageViewModel.getString("pin_confirm_title"),
+                                text = title,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = if (step == 1) languageViewModel.getString("pin_set_desc") else languageViewModel.getString("pin_confirm_desc"),
+                                text = desc,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -255,7 +309,7 @@ fun NumericKeypad(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
-                                        imageVector = Icons.Default.Backspace,
+                                        imageVector = Icons.AutoMirrored.Filled.Backspace,
                                         contentDescription = "Backspace",
                                         tint = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.size(22.dp)
@@ -275,7 +329,7 @@ fun NumericKeypad(
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
-                                            imageVector = Icons.Outlined.Lock,
+                                            imageVector = Icons.Outlined.Fingerprint,
                                             contentDescription = "Biometric",
                                             tint = MaterialTheme.colorScheme.primary,
                                             modifier = Modifier.size(24.dp)

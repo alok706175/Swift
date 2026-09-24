@@ -2,10 +2,8 @@ package com.swiftapp
 
 import android.os.Bundle
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -17,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.swiftapp.ui.screens.AnimatedSplashScreen
 import com.swiftapp.ui.screens.AppLockScreen
 import com.swiftapp.ui.screens.MainScreen
 import com.swiftapp.ui.theme.PDFUtilityAppTheme
@@ -24,10 +23,12 @@ import com.swiftapp.ui.viewmodel.LanguageViewModel
 import com.swiftapp.ui.viewmodel.ThemeMode
 import com.swiftapp.ui.viewmodel.ThemeViewModel
 import com.swiftapp.utils.AppLockManager
+import com.swiftapp.utils.AppLockType
 import com.swiftapp.utils.FileNamingManager
 import com.swiftapp.utils.HapticManager
 import com.swiftapp.utils.ScannerSettingsManager
 import com.swiftapp.utils.StorageLocationManager
+import com.swiftapp.utils.StoragePermissionManager
 
 class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,10 +37,11 @@ class MainActivity : FragmentActivity() {
         StorageLocationManager.init(this)
         FileNamingManager.init(this)
         AppLockManager.init(this)
+        AppLockManager.applyPrivacyShield(this)
         ScannerSettingsManager.init(this)
         com.swiftapp.utils.NotificationSettingsManager.init(this)
         com.swiftapp.utils.NotificationHelper.init(this)
-        com.swiftapp.utils.StoragePermissionManager.checkPermission(this)
+        StoragePermissionManager.checkPermission(this)
         
         setContent {
             val themeViewModel: ThemeViewModel = viewModel()
@@ -47,7 +49,7 @@ class MainActivity : FragmentActivity() {
             val themeMode by themeViewModel.themeMode.collectAsState()
             val isSessionUnlocked by AppLockManager.isSessionUnlocked.collectAsState()
             val lockType by AppLockManager.lockTypeFlow.collectAsState()
-            var showSplashScreen by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+            var showSplashScreen by remember { mutableStateOf(true) }
 
             val darkTheme = when (themeMode) {
                 ThemeMode.LIGHT -> false
@@ -60,28 +62,23 @@ class MainActivity : FragmentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    AnimatedContent(
+                    Crossfade(
                         targetState = showSplashScreen,
-                        transitionSpec = {
-                            fadeIn(animationSpec = androidx.compose.animation.core.tween(350)) togetherWith
-                                fadeOut(animationSpec = androidx.compose.animation.core.tween(350))
-                        },
-                        label = "SplashScreenTransition"
+                        animationSpec = tween(350),
+                        label = "SplashScreenCrossfade"
                     ) { isSplash ->
                         if (isSplash) {
-                            com.swiftapp.ui.screens.AnimatedSplashScreen(
+                            AnimatedSplashScreen(
                                 onSplashFinished = {
                                     showSplashScreen = false
                                 }
                             )
                         } else {
-                            val isLocked = !isSessionUnlocked && lockType != com.swiftapp.utils.AppLockType.NONE
+                            val isLocked = !isSessionUnlocked && lockType != AppLockType.NONE
 
-                            AnimatedContent(
+                            Crossfade(
                                 targetState = isLocked,
-                                transitionSpec = {
-                                    fadeIn() togetherWith fadeOut()
-                                },
+                                animationSpec = tween(250),
                                 label = "AppLockTransition"
                             ) { locked ->
                                 if (locked) {
@@ -105,9 +102,21 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        AppLockManager.onAppForegrounded()
+        AppLockManager.applyPrivacyShield(this)
+    }
+
     override fun onResume() {
         super.onResume()
-        com.swiftapp.utils.StoragePermissionManager.checkPermission(this)
+        AppLockManager.onAppForegrounded()
+        AppLockManager.applyPrivacyShield(this)
+        StoragePermissionManager.checkPermission(this)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        AppLockManager.onAppBackgrounded()
     }
 }
-

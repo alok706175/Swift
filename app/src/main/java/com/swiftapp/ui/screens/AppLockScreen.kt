@@ -10,12 +10,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -30,6 +30,8 @@ import com.swiftapp.ui.components.TactileButton
 import com.swiftapp.ui.viewmodel.LanguageViewModel
 import com.swiftapp.utils.AppLockManager
 import com.swiftapp.utils.AppLockType
+import com.swiftapp.utils.HapticManager
+import kotlinx.coroutines.delay
 
 @Composable
 fun AppLockScreen(
@@ -40,11 +42,23 @@ fun AppLockScreen(
     val lockType by AppLockManager.lockTypeFlow.collectAsState()
     var enteredPin by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var remainingLockoutSeconds by remember { mutableLongStateOf(AppLockManager.getRemainingLockoutSeconds()) }
+
+    // Lockout countdown timer loop
+    LaunchedEffect(remainingLockoutSeconds) {
+        while (remainingLockoutSeconds > 0L) {
+            delay(1000L)
+            remainingLockoutSeconds = AppLockManager.getRemainingLockoutSeconds()
+            if (remainingLockoutSeconds == 0L) {
+                errorMessage = null
+            }
+        }
+    }
 
     // Shake animation on error
     val shakeOffset = remember { Animatable(0f) }
     LaunchedEffect(errorMessage) {
-        if (errorMessage != null) {
+        if (errorMessage != null && remainingLockoutSeconds == 0L) {
             shakeOffset.animateTo(
                 targetValue = 0f,
                 animationSpec = keyframes {
@@ -63,6 +77,7 @@ fun AppLockScreen(
     }
 
     fun promptBiometrics() {
+        if (remainingLockoutSeconds > 0L) return
         val activity = context as? FragmentActivity
         if (activity != null) {
             AppLockManager.authenticateWithBiometrics(
@@ -71,10 +86,17 @@ fun AppLockScreen(
                 subtitle = languageViewModel.getString("lock_screen_subtitle"),
                 negativeButtonText = languageViewModel.getString("btn_use_pin"),
                 onSuccess = {
+                    HapticManager.success()
                     onUnlocked()
                 },
                 onError = { err ->
-                    errorMessage = err
+                    HapticManager.error()
+                    remainingLockoutSeconds = AppLockManager.getRemainingLockoutSeconds()
+                    if (remainingLockoutSeconds > 0L) {
+                        errorMessage = "Too many failed attempts. Locked for ${remainingLockoutSeconds}s."
+                    } else {
+                        errorMessage = err
+                    }
                 }
             )
         }
@@ -82,22 +104,31 @@ fun AppLockScreen(
 
     // Auto-prompt biometrics once on screen display if configured
     LaunchedEffect(lockType) {
-        if (lockType == AppLockType.BIOMETRIC || lockType == AppLockType.BIOMETRIC_OR_PIN) {
+        if ((lockType == AppLockType.BIOMETRIC || lockType == AppLockType.BIOMETRIC_OR_PIN) && remainingLockoutSeconds == 0L) {
             promptBiometrics()
         }
     }
 
     fun handleDigit(digit: String) {
+        if (remainingLockoutSeconds > 0L) return
         errorMessage = null
+        HapticManager.light()
         if (enteredPin.length < 4) {
             val updated = enteredPin + digit
             enteredPin = updated
             if (updated.length == 4) {
                 if (AppLockManager.verifyPin(updated)) {
+                    HapticManager.success()
                     AppLockManager.unlockSession()
                     onUnlocked()
                 } else {
-                    errorMessage = languageViewModel.getString("pin_incorrect_error")
+                    HapticManager.error()
+                    remainingLockoutSeconds = AppLockManager.getRemainingLockoutSeconds()
+                    if (remainingLockoutSeconds > 0L) {
+                        errorMessage = "Too many failed attempts. Locked for ${remainingLockoutSeconds}s."
+                    } else {
+                        errorMessage = languageViewModel.getString("pin_incorrect_error")
+                    }
                     enteredPin = ""
                 }
             }
@@ -105,7 +136,9 @@ fun AppLockScreen(
     }
 
     fun handleBackspace() {
+        if (remainingLockoutSeconds > 0L) return
         errorMessage = null
+        HapticManager.light()
         if (enteredPin.isNotEmpty()) {
             enteredPin = enteredPin.dropLast(1)
         }
@@ -160,13 +193,38 @@ fun AppLockScreen(
                 )
             }
 
-            // PIN Dots Indicator & Error message
+            // PIN Dots Indicator & Error / Lockout message
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.graphicsLayer { translationX = shakeOffset.value }
             ) {
-                if (lockType != AppLockType.BIOMETRIC || AppLockManager.hasPinSet(context)) {
+                if (remainingLockoutSeconds > 0L) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Timer,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Try again in ${remainingLockoutSeconds}s",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else if (lockType != AppLockType.BIOMETRIC || AppLockManager.hasPinSet(context)) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(20.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -196,7 +254,7 @@ fun AppLockScreen(
                     }
                 }
 
-                if (errorMessage != null) {
+                if (errorMessage != null && remainingLockoutSeconds == 0L) {
                     Text(
                         text = errorMessage ?: "",
                         color = MaterialTheme.colorScheme.error,
@@ -217,7 +275,8 @@ fun AppLockScreen(
                     TactileButton(
                         onClick = { promptBiometrics() },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        enabled = remainingLockoutSeconds == 0L
                     ) {
                         Icon(Icons.Outlined.Fingerprint, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))

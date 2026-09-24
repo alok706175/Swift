@@ -77,6 +77,13 @@ import java.text.DecimalFormat
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
+import com.swiftapp.data.model.FlashMode
+import com.swiftapp.data.model.IdCardStep
+import com.swiftapp.data.model.ScanCaptureMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,54 +102,43 @@ fun ScanPdfScreen(
     val isExportDialogVisible by viewModel.isExportDialogVisible.collectAsState()
     val exportConfig by viewModel.exportConfig.collectAsState()
 
-    var showAddSourceSheet by remember { mutableStateOf(false) }
-    var tempCameraPhotoFile by remember { mutableStateOf<File?>(null) }
+    val captureMode by viewModel.captureMode.collectAsState()
+    val isAutoCapture by viewModel.isAutoCapture.collectAsState()
+    val flashMode by viewModel.flashMode.collectAsState()
+    val idCardStep by viewModel.idCardStep.collectAsState()
 
-    // Camera Capture Launcher
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success && tempCameraPhotoFile != null && tempCameraPhotoFile!!.exists()) {
-            viewModel.addCapturedImage(context, tempCameraPhotoFile!!)
-        }
+    var isCameraActive by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        )
     }
+    var showAddSourceSheet by remember { mutableStateOf(false) }
 
     // Permission Launcher for Camera
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            val photoFile = File(context.cacheDir, "camera_raw_${System.currentTimeMillis()}.jpg")
-            tempCameraPhotoFile = photoFile
-            val photoUri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                photoFile
-            )
-            takePictureLauncher.launch(photoUri)
+            isCameraActive = true
         } else {
-            Toast.makeText(context, "Camera permission is required to capture documents", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Camera permission is required to scan documents", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // ML Kit Scanner Launcher
-    val mlKitScannerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val scanningResult = GmsDocumentScanningResult.fromActivityResultIntent(result.data)
-            scanningResult?.pages?.let { mlPages ->
-                val uris = mlPages.map { it.imageUri }
-                viewModel.importGalleryImages(context, uris)
-            } ?: scanningResult?.pdf?.let { pdf ->
-                val fileName = com.swiftapp.utils.FileNamingManager.generateFileName("Scan")
-                val file = context.cacheDir.resolve(fileName)
-                context.contentResolver.openInputStream(pdf.uri)?.use { input ->
-                    file.outputStream().use { output -> input.copyTo(output) }
-                }
-                val savedFile = com.swiftapp.utils.StorageLocationManager.savePdfToStorage(context, file, fileName)
-                onOpenPdf(savedFile)
-            }
+    LaunchedEffect(Unit) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    fun startLiveCamera(mode: ScanCaptureMode? = null) {
+        if (mode != null) {
+            viewModel.setCaptureMode(mode)
+        }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            isCameraActive = true
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
@@ -155,39 +151,36 @@ fun ScanPdfScreen(
         }
     }
 
-    fun launchCamera() {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            val photoFile = File(context.cacheDir, "camera_raw_${System.currentTimeMillis()}.jpg")
-            tempCameraPhotoFile = photoFile
-            val photoUri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                photoFile
-            )
-            takePictureLauncher.launch(photoUri)
-        } else {
-            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
-
-    fun launchMLKitScanner() {
-        val options = GmsDocumentScannerOptions.Builder()
-            .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
-            .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG, GmsDocumentScannerOptions.RESULT_FORMAT_PDF)
-            .setGalleryImportAllowed(true)
-            .build()
-
-        GmsDocumentScanning.getClient(options)
-            .getStartScanIntent(context as android.app.Activity)
-            .addOnSuccessListener { intentSender ->
-                mlKitScannerLauncher.launch(
-                    androidx.activity.result.IntentSenderRequest.Builder(intentSender).build()
-                )
+    // Fullscreen Camera Scanner
+    if (isCameraActive) {
+        CameraScannerView(
+            captureMode = captureMode,
+            onModeSelected = { viewModel.setCaptureMode(it) },
+            flashMode = flashMode,
+            onCycleFlash = { viewModel.cycleFlashMode() },
+            isAutoCapture = isAutoCapture,
+            onToggleAutoCapture = { viewModel.toggleAutoCapture() },
+            idCardStep = idCardStep,
+            onResetIdCard = { viewModel.resetIdCardCapture() },
+            capturedPageCount = pages.size,
+            onPhotoCaptured = { photoFile ->
+                viewModel.addCapturedImage(context, photoFile)
+            },
+            onPickGallery = {
+                galleryPickerLauncher.launch(arrayOf("image/*", "image/jpeg", "image/png", "image/webp"))
+            },
+            onFinishScanning = {
+                isCameraActive = false
+            },
+            onClose = {
+                if (pages.isEmpty()) {
+                    onNavigateBack()
+                } else {
+                    isCameraActive = false
+                }
             }
-            .addOnFailureListener {
-                // Fallback directly to native camera
-                launchCamera()
-            }
+        )
+        return
     }
 
     Scaffold(
@@ -285,7 +278,7 @@ fun ScanPdfScreen(
             if (pages.isEmpty()) {
                 // Empty state: Options to start scanning or pick images
                 ScanEmptyState(
-                    onScanCamera = { launchMLKitScanner() },
+                    onStartCamera = { mode -> startLiveCamera(mode) },
                     onPickGallery = { galleryPickerLauncher.launch(arrayOf("image/*", "image/jpeg", "image/png", "image/webp")) }
                 )
             } else {
@@ -356,24 +349,51 @@ fun ScanPdfScreen(
                     // Quick Actions for Active Page
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         ScanToolActionItem(
                             icon = Icons.Outlined.Crop,
-                            label = "Adjust Crop",
-                            onClick = { viewModel.openCropDialog() }
+                            label = "Crop",
+                            onClick = {
+                                com.swiftapp.utils.HapticManager.light()
+                                viewModel.openCropDialog()
+                            }
                         )
                         ScanToolActionItem(
                             icon = Icons.Outlined.RotateRight,
                             label = "Rotate",
-                            onClick = { viewModel.rotatePage(context, activePageIndex, clockwise = true) }
+                            onClick = {
+                                com.swiftapp.utils.HapticManager.light()
+                                viewModel.rotatePage(context, activePageIndex, clockwise = true)
+                            }
+                        )
+                        ScanToolActionItem(
+                            icon = Icons.Outlined.Image,
+                            label = "Save JPG",
+                            onClick = {
+                                com.swiftapp.utils.HapticManager.light()
+                                viewModel.saveCurrentPageAsJpeg(context) { ok, msg ->
+                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        )
+                        ScanToolActionItem(
+                            icon = Icons.Outlined.Share,
+                            label = "Share",
+                            onClick = {
+                                com.swiftapp.utils.HapticManager.light()
+                                viewModel.shareCurrentPageAsJpeg(context)
+                            }
                         )
                         ScanToolActionItem(
                             icon = Icons.Outlined.Delete,
                             label = "Delete",
                             tint = MaterialTheme.colorScheme.error,
-                            onClick = { viewModel.deletePage(activePageIndex) }
+                            onClick = {
+                                com.swiftapp.utils.HapticManager.light()
+                                viewModel.deletePage(activePageIndex)
+                            }
                         )
                     }
 
@@ -547,7 +567,7 @@ fun ScanPdfScreen(
                             .height(100.dp)
                             .clickable {
                                 showAddSourceSheet = false
-                                launchMLKitScanner()
+                                startLiveCamera()
                             },
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                         shape = RoundedCornerShape(16.dp)
@@ -687,69 +707,145 @@ fun ScanPdfScreen(
 }
 
 /**
- * Empty State for Scan to PDF screen.
+ * Empty State for Scan to PDF screen with Dedicated Capture Mode Presets.
  */
 @Composable
 private fun ScanEmptyState(
-    onScanCamera: () -> Unit,
+    onStartCamera: (ScanCaptureMode) -> Unit,
     onPickGallery: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
+        // Main Scan Hero Button
+        Surface(
             modifier = Modifier
-                .size(100.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .clickable { onStartCamera(ScanCaptureMode.DOCUMENT) },
+            color = MaterialTheme.colorScheme.primary,
+            shadowElevation = 6.dp
         ) {
-            Icon(
-                imageVector = Icons.Outlined.DocumentScanner,
-                contentDescription = null,
-                modifier = Modifier.size(50.dp),
-                tint = MaterialTheme.colorScheme.primary
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DocumentScanner,
+                        contentDescription = null,
+                        modifier = Modifier.size(36.dp),
+                        tint = Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    "Start Document Scanner",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontSize = 20.sp
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    "Auto-Capture, Edge Alignment & HD Flattening",
+                    style = MaterialTheme.typography.bodyMedium.copy(color = Color.White.copy(alpha = 0.85f)),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Dedicated Preset Capture Modes Grid Title
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Dedicated Capture Modes",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Capture Mode Presets Cards
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ScanModeCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Outlined.Badge,
+                title = "ID Card",
+                subtitle = "2-Sided single page merge",
+                badge = "Front + Back",
+                tintColor = Color(0xFF00C853),
+                onClick = { onStartCamera(ScanCaptureMode.ID_CARD) }
+            )
+
+            ScanModeCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Outlined.MenuBook,
+                title = "Book Scan",
+                subtitle = "Dual-page auto split",
+                badge = "Auto Split",
+                tintColor = Color(0xFFFFAB00),
+                onClick = { onStartCamera(ScanCaptureMode.BOOK) }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ScanModeCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Outlined.Dashboard,
+                title = "Whiteboard",
+                subtitle = "Glare-free text filter",
+                badge = "High Contrast",
+                tintColor = Color(0xFF2979FF),
+                onClick = { onStartCamera(ScanCaptureMode.WHITEBOARD) }
+            )
+
+            ScanModeCard(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Outlined.ContactPage,
+                title = "Business Card",
+                subtitle = "Compact card crop",
+                badge = "Card Preset",
+                tintColor = Color(0xFFAA00FF),
+                onClick = { onStartCamera(ScanCaptureMode.BUSINESS_CARD) }
             )
         }
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Text(
-            "Scan Paper Documents",
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            "Capture documents with automatic corner detection, perspective flattening, and clean text filters.",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        TactileButton(
-            onClick = onScanCamera,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            Icon(Icons.Default.CameraAlt, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Scan with Camera", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
+        // Import from Gallery Button
         TactileOutlinedButton(
             onClick = onPickGallery,
             modifier = Modifier
@@ -757,9 +853,81 @@ private fun ScanEmptyState(
                 .height(52.dp),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+            Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Import Images from Gallery", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Text("Import Images from Gallery", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+        }
+    }
+}
+
+/**
+ * Modern preset card for dedicated capture modes.
+ */
+@Composable
+private fun ScanModeCard(
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    badge: String,
+    tintColor: Color,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onClick() },
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(tintColor.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, contentDescription = null, tint = tintColor, modifier = Modifier.size(22.dp))
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = tintColor.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        text = badge,
+                        color = tintColor,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -892,39 +1060,60 @@ private fun InteractivePolygonCropDialog(
                         val pBR = normToPx(corners.bottomRight)
                         val pBL = normToPx(corners.bottomLeft)
 
+                        // Midpoint Edge handles
+                        val pTop = (pTL + pTR) / 2f
+                        val pRight = (pTR + pBR) / 2f
+                        val pBottom = (pBL + pBR) / 2f
+                        val pLeft = (pTL + pBL) / 2f
+
+                        val allPoints = listOf(pTL, pTR, pBR, pBL, pTop, pRight, pBottom, pLeft)
+
                         Canvas(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .pointerInput(corners) {
                                     detectDragGestures(
                                         onDragStart = { touchOffset ->
-                                            val points = listOf(pTL, pTR, pBR, pBL)
-                                            val closestIdx = points.indices.minByOrNull { i ->
-                                                hypot((points[i].x - touchOffset.x).toDouble(), (points[i].y - touchOffset.y).toDouble())
+                                            val closestIdx = allPoints.indices.minByOrNull { i ->
+                                                hypot((allPoints[i].x - touchOffset.x).toDouble(), (allPoints[i].y - touchOffset.y).toDouble())
                                             }
-                                            if (closestIdx != null && hypot((points[closestIdx].x - touchOffset.x).toDouble(), (points[closestIdx].y - touchOffset.y).toDouble()) < 120.0) {
+                                            if (closestIdx != null && hypot((allPoints[closestIdx].x - touchOffset.x).toDouble(), (allPoints[closestIdx].y - touchOffset.y).toDouble()) < 110.0) {
                                                 activeCornerIndex = closestIdx
+                                                com.swiftapp.utils.HapticManager.light()
                                             }
                                         },
                                         onDrag = { change, dragAmount ->
                                             change.consume()
                                             val idx = activeCornerIndex ?: return@detectDragGestures
-                                            val currentPoint = when (idx) {
-                                                0 -> pTL
-                                                1 -> pTR
-                                                2 -> pBR
-                                                3 -> pBL
-                                                else -> return@detectDragGestures
-                                            }
-                                            val newPx = currentPoint + dragAmount
-                                            val newNorm = pxToNorm(newPx)
-
-                                            corners = when (idx) {
-                                                0 -> corners.copy(topLeft = newNorm)
-                                                1 -> corners.copy(topRight = newNorm)
-                                                2 -> corners.copy(bottomRight = newNorm)
-                                                3 -> corners.copy(bottomLeft = newNorm)
-                                                else -> corners
+                                            when (idx) {
+                                                0 -> corners = corners.copy(topLeft = pxToNorm(pTL + dragAmount))
+                                                1 -> corners = corners.copy(topRight = pxToNorm(pTR + dragAmount))
+                                                2 -> corners = corners.copy(bottomRight = pxToNorm(pBR + dragAmount))
+                                                3 -> corners = corners.copy(bottomLeft = pxToNorm(pBL + dragAmount))
+                                                4 -> { // Top Edge
+                                                    corners = corners.copy(
+                                                        topLeft = pxToNorm(pTL + dragAmount),
+                                                        topRight = pxToNorm(pTR + dragAmount)
+                                                    )
+                                                }
+                                                5 -> { // Right Edge
+                                                    corners = corners.copy(
+                                                        topRight = pxToNorm(pTR + dragAmount),
+                                                        bottomRight = pxToNorm(pBR + dragAmount)
+                                                    )
+                                                }
+                                                6 -> { // Bottom Edge
+                                                    corners = corners.copy(
+                                                        bottomLeft = pxToNorm(pBL + dragAmount),
+                                                        bottomRight = pxToNorm(pBR + dragAmount)
+                                                    )
+                                                }
+                                                7 -> { // Left Edge
+                                                    corners = corners.copy(
+                                                        topLeft = pxToNorm(pTL + dragAmount),
+                                                        bottomLeft = pxToNorm(pBL + dragAmount)
+                                                    )
+                                                }
                                             }
                                         },
                                         onDragEnd = {
@@ -952,7 +1141,16 @@ private fun InteractivePolygonCropDialog(
                                 style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                             )
 
-                            // Draw corner handles
+                            // Draw Edge Midpoint pill handles (Indices 4..7)
+                            val edgePoints = listOf(pTop, pRight, pBottom, pLeft)
+                            for ((i, pt) in edgePoints.withIndex()) {
+                                val isHeld = (i + 4 == activeCornerIndex)
+                                val radius = if (isHeld) 11.dp.toPx() else 8.dp.toPx()
+                                drawCircle(color = Color.White, radius = radius + 2.dp.toPx(), center = pt)
+                                drawCircle(color = Color(0xFF0D47A1), radius = radius, center = pt)
+                            }
+
+                            // Draw corner handles (Indices 0..3)
                             val cornerPoints = listOf(pTL, pTR, pBR, pBL)
                             for ((i, pt) in cornerPoints.withIndex()) {
                                 val isHeld = (i == activeCornerIndex)
@@ -1201,20 +1399,10 @@ private fun ScanSuccessDialog(
                             .padding(top = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFE8F5E9)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                modifier = Modifier.size(40.dp),
-                                tint = Color(0xFF2E7D32)
-                            )
-                        }
+                        AnimatedSuccessCheckmark(
+                            size = 64.dp,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
 
                         Spacer(modifier = Modifier.height(12.dp))
 

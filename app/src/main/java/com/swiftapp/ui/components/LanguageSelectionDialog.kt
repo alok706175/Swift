@@ -31,26 +31,14 @@ fun LanguageSelectionDialog(
     onLanguageSelected: (AppLanguage) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
     var selectedLang by remember { mutableStateOf(currentLanguage) }
-
-    val filteredLanguages = remember(searchQuery) {
-        if (searchQuery.isBlank()) {
-            AppLanguage.entries.toList()
-        } else {
-            AppLanguage.entries.filter {
-                it.nativeName.contains(searchQuery, ignoreCase = true) ||
-                it.englishName.contains(searchQuery, ignoreCase = true) ||
-                it.code.contains(searchQuery, ignoreCase = true)
-            }
-        }
-    }
+    val allLanguages = remember { AppLanguage.entries.toList() }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 580.dp),
+                .heightIn(max = 600.dp),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -103,32 +91,14 @@ fun LanguageSelectionDialog(
                     }
                 }
 
-                // Search Bar
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search language...", style = MaterialTheme.typography.bodySmall) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
                 // Language List
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f, fill = false)
-                        .heightIn(max = 300.dp),
+                        .heightIn(max = 380.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(filteredLanguages, key = { it.code }) { lang ->
+                    items(allLanguages, key = { it.code }) { lang ->
                         val isSelected = selectedLang == lang
                         Surface(
                             shape = RoundedCornerShape(14.dp),
@@ -141,6 +111,7 @@ fun LanguageSelectionDialog(
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
                                 .clickable {
+                                    com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
                                     selectedLang = lang
                                 }
                         ) {
@@ -213,7 +184,7 @@ fun LanguageSelectionDialog(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Apply")
+                        Text("Save")
                     }
                 }
             }

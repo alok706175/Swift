@@ -40,8 +40,10 @@ import com.swiftapp.utils.PdfSortOption
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -81,7 +83,7 @@ import kotlin.time.Duration.Companion.milliseconds
  */
 enum class NavTab(val title: String, val icon: ImageVector) {
     Home("Home", Icons.Default.Home),
-    Tools("Toolbox", Icons.Default.Layers),
+    Tools("Tools", Icons.Default.Layers),
     Settings("Settings", Icons.Default.Settings),
 }
 
@@ -508,11 +510,14 @@ fun MainScreen(
 
     LaunchedEffect(uiState) {
         if (uiState is PdfUiState.Success) {
+            com.swiftapp.utils.HapticManager.success()
             val successState = uiState as PdfUiState.Success
             val file = File(successState.filePath)
             viewModel.addToRecent(context, file)
             readerFile = file
             viewModel.loadAllFiles(context)
+        } else if (uiState is PdfUiState.Error) {
+            com.swiftapp.utils.HapticManager.error()
         }
     }
 
@@ -544,7 +549,7 @@ fun MainScreen(
                 id = "merge_pdf",
                 title = languageViewModel.getString("tool_merge"),
                 description = languageViewModel.getString("tool_merge_desc"),
-                icon = Icons.Outlined.CallMerge,
+                icon = Icons.AutoMirrored.Outlined.CallMerge,
                 onClick = { isMergeScreenOpen = true },
             ),
             UtilityToolItem(
@@ -646,6 +651,32 @@ fun MainScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        floatingActionButtonPosition = FabPosition.End,
+        floatingActionButton = {
+            if (selectedTab == NavTab.Home) {
+                FloatingActionButton(
+                    onClick = {
+                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.MEDIUM)
+                        isScanScreenOpen = true
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White,
+                    elevation = FloatingActionButtonDefaults.elevation(
+                        defaultElevation = 6.dp,
+                        pressedElevation = 10.dp
+                    ),
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.DocumentScanner,
+                        contentDescription = "Scan PDF",
+                        modifier = Modifier.size(28.dp),
+                        tint = Color.White
+                    )
+                }
+            }
+        },
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -662,6 +693,7 @@ fun MainScreen(
                         label = { Text(tabLabel, fontWeight = FontWeight.Bold) },
                         selected = selectedTab == tab,
                         onClick = {
+                            com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
                             selectedTab = tab
                             isSearchActive = false
                             searchQuery = ""
@@ -721,82 +753,92 @@ fun MainScreen(
                     }
                 )
             } else {
-                when (selectedTab) {
-                    NavTab.Home -> HomeDashboardContent(
-                        displayFiles = displayFiles,
-                        isScanning = isScanning,
-                        homeSubSection = homeSubSection,
-                        activeFilter = activeFilter,
-                        sortOption = sortOption,
-                        isGridView = isGridView,
-                        hasStoragePermission = hasStoragePermission,
-                        searchQuery = searchQuery,
-                        context = context,
-                        languageViewModel = languageViewModel,
-                        onSearchChange = {
-                            searchQuery = it
-                            viewModel.setSearchQuery(it)
-                        },
-                        onSubSectionSelected = { viewModel.setHomeSubSection(it) },
-                        onFilterSelected = { viewModel.setFilter(it) },
-                        onSortClick = { showSortDialog = true },
-                        onToggleViewMode = { viewModel.toggleViewMode() },
-                        onRefresh = { viewModel.loadAllFiles(context, forceRefresh = true) },
-                        onRequestPermissions = { requestPermissions() },
-                        onOpen = {
-                            viewModel.addToRecent(context, it)
-                            readerFile = it
-                        },
-                        onShare = { sharePdfFile(context, it.path) },
-                        onRename = { fileToRename = it },
-                        onDelete = { fileToDelete = it },
-                        onShowDetails = { fileForDetails = it },
-                        onSendToTool = { toolId, file ->
-                            when (toolId) {
-                                "compress" -> {
-                                    compressPdfFile = file
-                                    isCompressScreenOpen = true
-                                }
-                                "esign" -> {
-                                    signPdfFile = file
-                                    isSignScreenOpen = true
-                                }
-                                "protect" -> {
-                                    protectPdfFile = file
-                                    isProtectScreenOpen = true
-                                }
-                                "unlock" -> {
-                                    unlockPdfFile = file
-                                    isUnlockScreenOpen = true
-                                }
-                                "rotate" -> {
-                                    rotatePdfFile = file
-                                    isRotateScreenOpen = true
-                                }
-                                "split" -> {
-                                    splitPdfFile = file
-                                    isSplitScreenOpen = true
-                                }
-                                "delete_pages" -> {
-                                    deletePagesPdfFile = file
-                                    isDeletePagesScreenOpen = true
-                                }
-                                "pdf_to_images" -> {
-                                    pdfToImagesFile = file
-                                    isPdfToImagesScreenOpen = true
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = {
+                        fadeIn(animationSpec = androidx.compose.animation.core.tween(220, easing = androidx.compose.animation.core.FastOutSlowInEasing)) togetherWith
+                            fadeOut(animationSpec = androidx.compose.animation.core.tween(180, easing = androidx.compose.animation.core.FastOutLinearInEasing))
+                    },
+                    label = "TabTransition"
+                ) { tab ->
+                    when (tab) {
+                        NavTab.Home -> HomeDashboardContent(
+                            displayFiles = displayFiles,
+                            isScanning = isScanning,
+                            homeSubSection = homeSubSection,
+                            activeFilter = activeFilter,
+                            sortOption = sortOption,
+                            isGridView = isGridView,
+                            hasStoragePermission = hasStoragePermission,
+                            searchQuery = searchQuery,
+                            context = context,
+                            languageViewModel = languageViewModel,
+                            onSearchChange = {
+                                searchQuery = it
+                                viewModel.setSearchQuery(it)
+                            },
+                            onSubSectionSelected = { viewModel.setHomeSubSection(it) },
+                            onFilterSelected = { viewModel.setFilter(it) },
+                            onSortClick = { showSortDialog = true },
+                            onToggleViewMode = { viewModel.toggleViewMode() },
+                            onRefresh = { viewModel.loadAllFiles(context, forceRefresh = true) },
+                            onRequestPermissions = { requestPermissions() },
+                            onOpen = {
+                                viewModel.addToRecent(context, it)
+                                readerFile = it
+                            },
+                            onShare = { sharePdfFile(context, it.path) },
+                            onRename = { fileToRename = it },
+                            onDelete = { fileToDelete = it },
+                            onShowDetails = { fileForDetails = it },
+                            onSendToTool = { toolId, file ->
+                                when (toolId) {
+                                    "compress" -> {
+                                        compressPdfFile = file
+                                        isCompressScreenOpen = true
+                                    }
+                                    "esign" -> {
+                                        signPdfFile = file
+                                        isSignScreenOpen = true
+                                    }
+                                    "protect" -> {
+                                        protectPdfFile = file
+                                        isProtectScreenOpen = true
+                                    }
+                                    "unlock" -> {
+                                        unlockPdfFile = file
+                                        isUnlockScreenOpen = true
+                                    }
+                                    "rotate" -> {
+                                        rotatePdfFile = file
+                                        isRotateScreenOpen = true
+                                    }
+                                    "split" -> {
+                                        splitPdfFile = file
+                                        isSplitScreenOpen = true
+                                    }
+                                    "delete_pages" -> {
+                                        deletePagesPdfFile = file
+                                        isDeletePagesScreenOpen = true
+                                    }
+                                    "pdf_to_images" -> {
+                                        pdfToImagesFile = file
+                                        isPdfToImagesScreenOpen = true
+                                    }
                                 }
                             }
-                        }
-                    )
-                    NavTab.Tools -> ToolboxContent(
-                        allTools = allTools,
-                        searchQuery = searchQuery,
-                        onSearchChange = { searchQuery = it },
-                    )
-                    NavTab.Settings -> SettingsContent(
-                        themeViewModel = themeViewModel,
-                        languageViewModel = languageViewModel
-                    )
+                        )
+                        NavTab.Tools -> ToolsContent(
+                            allTools = allTools,
+                            searchQuery = searchQuery,
+                            onSearchChange = { searchQuery = it },
+                            languageViewModel = languageViewModel,
+                        )
+                        NavTab.Settings -> SettingsContent(
+                            themeViewModel = themeViewModel,
+                            languageViewModel = languageViewModel
+                        )
+                    }
                 }
             }
         }
@@ -1016,18 +1058,21 @@ fun HomeDashboardContent(
 
                 AnimatedContent(
                     targetState = isSearchFieldOpen || searchQuery.isNotEmpty(),
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(200)) togetherWith fadeOut(animationSpec = tween(150))
+                    },
                     label = "HeaderSearchAnimation"
                 ) { isSearching ->
                     if (isSearching) {
                         OutlinedTextField(
                             value = searchQuery,
                             onValueChange = onSearchChange,
-                            placeholder = { Text("Search file") },
+                            placeholder = { Text("Search PDF files...") },
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Outlined.Search,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                             },
                             trailingIcon = {
@@ -1048,7 +1093,7 @@ fun HomeDashboardContent(
                                 focusedContainerColor = MaterialTheme.colorScheme.surface,
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
                             ),
                             singleLine = true,
                         )
@@ -1056,34 +1101,50 @@ fun HomeDashboardContent(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 6.dp, bottom = 4.dp),
+                                .padding(top = 4.dp, bottom = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .shadow(
+                                            elevation = 4.dp,
+                                            shape = RoundedCornerShape(10.dp),
+                                            spotColor = Color(0xFFFF5E38).copy(alpha = 0.35f),
+                                            ambientColor = Color(0xFFFF5E38).copy(alpha = 0.15f)
+                                        )
+                                        .clip(RoundedCornerShape(10.dp))
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.swift_icon_clean),
+                                        contentDescription = "Swift Logo",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
                                 Text(
                                     text = "Swift PDF",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Black,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = languageViewModel.getString("tagline"),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onBackground
                                 )
                             }
 
                             TactileIconButton(
                                 onClick = { isSearchFieldOpen = true },
-                                size = 42.dp,
+                                size = 40.dp,
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Search,
                                     contentDescription = "Search",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
@@ -1097,7 +1158,8 @@ fun HomeDashboardContent(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                     ) {
                         Row(
                             modifier = Modifier.padding(14.dp),
@@ -1148,7 +1210,8 @@ fun HomeDashboardContent(
                         .fillMaxWidth()
                         .height(48.dp),
                     shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 ) {
                     Row(
                         modifier = Modifier
@@ -1176,7 +1239,7 @@ fun HomeDashboardContent(
                                     Icon(
                                         imageVector = Icons.Outlined.History,
                                         contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(17.dp),
                                         tint = if (isRecentSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
@@ -1209,7 +1272,7 @@ fun HomeDashboardContent(
                                     Icon(
                                         imageVector = Icons.Outlined.Folder,
                                         contentDescription = null,
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(17.dp),
                                         tint = if (isAllFilesSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
@@ -1234,12 +1297,19 @@ fun HomeDashboardContent(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = if (isScanning && homeSubSection == HomeSubSection.ALL_FILES) "Scanning..." else "${displayFiles.size} PDFs",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                        ) {
+                            Text(
+                                text = if (isScanning && homeSubSection == HomeSubSection.ALL_FILES) "Scanning..." else "${displayFiles.size} PDFs",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                         if (isScanning && homeSubSection == HomeSubSection.ALL_FILES) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(14.dp),
@@ -1251,36 +1321,43 @@ fun HomeDashboardContent(
 
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         // Sort Button
-                        TextButton(
-                            onClick = onSortClick,
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                            modifier = Modifier.bounceClick()
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                            modifier = Modifier.bounceClick { onSortClick() }
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Sort,
-                                contentDescription = "Sort",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = sortOption.title.split(" ").first(),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Sort,
+                                    contentDescription = "Sort",
+                                    modifier = Modifier.size(15.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = sortOption.title.split(" ").first(),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                         }
 
                         // Grid / List View Toggle
                         TactileIconButton(
                             onClick = onToggleViewMode,
-                            size = 36.dp
+                            size = 36.dp,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         ) {
                             Icon(
-                                imageVector = if (isGridView) Icons.Outlined.ViewList else Icons.Outlined.GridView,
+                                imageVector = if (isGridView) Icons.AutoMirrored.Outlined.ViewList else Icons.Outlined.GridView,
                                 contentDescription = "Toggle View",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(19.dp)
                             )
                         }
                     }
@@ -1298,20 +1375,20 @@ fun HomeDashboardContent(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 40.dp, horizontal = 24.dp),
+                            .padding(vertical = 48.dp, horizontal = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.size(72.dp)
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                            modifier = Modifier.size(76.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = if (homeSubSection == HomeSubSection.RECENT) Icons.Outlined.History else Icons.Outlined.Description,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(36.dp)
                                 )
                             }
@@ -1328,17 +1405,15 @@ fun HomeDashboardContent(
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = if (homeSubSection == HomeSubSection.RECENT) {
-                                "PDF files opened, converted, or altered with Swift PDF will appear here."
-                            } else {
-                                "Pull down from the top to scan storage and list all PDF documents on your device."
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
+                        if (homeSubSection != HomeSubSection.RECENT) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Pull down from the top to scan storage and list all PDF documents on your device.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             } else {
@@ -1424,7 +1499,8 @@ fun ListPdfFileCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -1433,7 +1509,7 @@ fun ListPdfFileCard(
         ) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = Color(0xFFFFEBEE),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
                 modifier = Modifier.size(46.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -1453,14 +1529,36 @@ fun ListPdfFileCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "${formatFileSize(file.size)} • ${PdfHelper.formatRelativeDate(file.dateModified)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Spacer(modifier = Modifier.height(3.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                    ) {
+                        Text(
+                            text = formatFileSize(file.size),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                        )
+                    }
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = PdfHelper.formatRelativeDate(file.dateModified),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             Box {
@@ -1511,25 +1609,26 @@ fun GridPdfFileCard(
     TactileCard(
         onClick = { onOpen(File(file.path)) },
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             // Card Preview Area
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(110.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFFFFEBEE).copy(alpha = 0.6f)),
+                    .height(105.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.PictureAsPdf,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(38.dp)
+                    modifier = Modifier.size(36.dp)
                 )
             }
 
@@ -1641,7 +1740,7 @@ fun PdfFileContextMenu(
         if (!showMoreTools) {
             DropdownMenuItem(
                 text = { Text("Open") },
-                leadingIcon = { Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 onClick = {
                     onDismiss()
                     onOpen()
@@ -1682,7 +1781,6 @@ fun PdfFileContextMenu(
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             DropdownMenuItem(
                 text = { Text("More", fontWeight = FontWeight.SemiBold) },
-                leadingIcon = { Icon(Icons.Default.MoreHoriz, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 trailingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, modifier = Modifier.size(14.dp)) },
                 onClick = {
                     showMoreTools = true
@@ -2032,44 +2130,60 @@ fun PdfSortBottomSheetDialog(
 }
 
 /**
- * Screen 3: Toolbox / All PDF Tools (Design Screen 3)
+ * Screen 3: Tools / All PDF Tools
  */
 @Composable
-fun ToolboxContent(
+fun ToolsContent(
     allTools: List<UtilityToolItem>,
     searchQuery: String,
     onSearchChange: (String) -> Unit,
+    languageViewModel: LanguageViewModel,
 ) {
     val filteredTools = remember(searchQuery, allTools) {
         if (searchQuery.isEmpty()) allTools
-        else allTools.filter { it.title.contains(searchQuery, ignoreCase = true) }
+        else allTools.filter { it.title.contains(searchQuery, ignoreCase = true) || it.description.contains(searchQuery, ignoreCase = true) }
     }
+
+    // Categorized Tools mapping
+    val essentialIds = remember { setOf("merge_pdf", "compress_pdf", "scan_pdf", "esign_pdf") }
+    val conversionIds = remember { setOf("image_to_pdf", "pdf_to_images") }
+    val securityIds = remember { setOf("protect_pdf", "unlock_pdf", "rotate_pdf", "split_pdf", "delete_pages") }
+
+    val essentialTools = remember(filteredTools) { filteredTools.filter { it.id in essentialIds } }
+    val conversionTools = remember(filteredTools) { filteredTools.filter { it.id in conversionIds } }
+    val securityTools = remember(filteredTools) { filteredTools.filter { it.id in securityIds } }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         // Header
         item {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp, bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "TOOLBOX",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp,
+                    text = languageViewModel.getString("tab_tools"),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
                 )
                 Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                    modifier = Modifier.size(42.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Person, contentDescription = "Avatar", tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            imageVector = Icons.Default.Layers,
+                            contentDescription = languageViewModel.getString("tab_tools"),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
                 }
             }
@@ -2081,11 +2195,17 @@ fun ToolboxContent(
                 value = searchQuery,
                 onValueChange = onSearchChange,
                 placeholder = { Text("Search tools...") },
-                leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { onSearchChange("") }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear")
+                            Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
                         }
                     }
                 },
@@ -2095,26 +2215,110 @@ fun ToolboxContent(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
                 ),
                 singleLine = true,
             )
         }
 
-        // Grid of Tool Cards (2 columns)
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                for (row in filteredTools.chunked(2)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        for (tool in row) {
-                            ToolboxGridCard(tool = tool, modifier = Modifier.weight(1f))
+        if (searchQuery.isNotEmpty()) {
+            // Flat list when searching
+            item {
+                Text(
+                    text = "Matching Tools (${filteredTools.size})",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    for (row in filteredTools.chunked(2)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            for (tool in row) {
+                                ToolsGridCard(tool = tool, modifier = Modifier.weight(1f))
+                            }
+                            if (row.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
                         }
-                        if (row.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
+                    }
+                }
+            }
+        } else {
+            // Categorized Sections
+            if (essentialTools.isNotEmpty()) {
+                item {
+                    ToolsCategorySection(
+                        title = "Essential Tools",
+                        icon = Icons.Outlined.Bolt,
+                        tools = essentialTools
+                    )
+                }
+            }
+
+            if (conversionTools.isNotEmpty()) {
+                item {
+                    ToolsCategorySection(
+                        title = "Conversion & Images",
+                        icon = Icons.Outlined.Collections,
+                        tools = conversionTools
+                    )
+                }
+            }
+
+            if (securityTools.isNotEmpty()) {
+                item {
+                    ToolsCategorySection(
+                        title = "Security & Pages",
+                        icon = Icons.Outlined.Security,
+                        tools = securityTools
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ToolsCategorySection(
+    title: String,
+    icon: ImageVector,
+    tools: List<UtilityToolItem>
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 2.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            for (row in tools.chunked(2)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    for (tool in row) {
+                        ToolsGridCard(tool = tool, modifier = Modifier.weight(1f))
+                    }
+                    if (row.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -2123,43 +2327,49 @@ fun ToolboxContent(
 }
 
 @Composable
-fun ToolboxGridCard(tool: UtilityToolItem, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(125.dp)
-            .clickable { tool.onClick() },
-        shape = RoundedCornerShape(20.dp),
+fun ToolsGridCard(tool: UtilityToolItem, modifier: Modifier = Modifier) {
+    TactileCard(
+        onClick = { tool.onClick() },
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
+                .fillMaxWidth()
+                .padding(14.dp),
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
+            horizontalAlignment = Alignment.Start,
         ) {
             Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(46.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                modifier = Modifier.size(44.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = tool.icon,
                         contentDescription = tool.title,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp),
+                        modifier = Modifier.size(22.dp),
                     )
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = tool.title,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = tool.description,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -2329,6 +2539,41 @@ fun SettingsContent(
         )
     }
 
+    var stagedThemeMode by remember(themeMode) { mutableStateOf(themeMode) }
+    var stagedNotification by remember(isNotificationEnabled) { mutableStateOf(isNotificationEnabled) }
+    var stagedHaptic by remember(isHapticEnabled) { mutableStateOf(isHapticEnabled) }
+    var stagedShutterSound by remember(isShutterSoundEnabled) { mutableStateOf(isShutterSoundEnabled) }
+    var stagedAutoEdge by remember(isAutoEdgeDetectionEnabled) { mutableStateOf(isAutoEdgeDetectionEnabled) }
+
+    val hasUnsavedChanges = stagedThemeMode != themeMode ||
+            stagedNotification != isNotificationEnabled ||
+            stagedHaptic != isHapticEnabled ||
+            stagedShutterSound != isShutterSoundEnabled ||
+            stagedAutoEdge != isAutoEdgeDetectionEnabled
+
+    fun saveAllSettings() {
+        themeViewModel.setThemeMode(stagedThemeMode)
+        com.swiftapp.utils.NotificationSettingsManager.setNotificationEnabled(context, stagedNotification)
+        com.swiftapp.utils.HapticManager.setHapticEnabled(context, stagedHaptic)
+        com.swiftapp.utils.ScannerSettingsManager.setShutterSoundEnabled(context, stagedShutterSound)
+        com.swiftapp.utils.ScannerSettingsManager.setAutoEdgeDetection(context, stagedAutoEdge)
+        com.swiftapp.utils.HapticManager.success()
+        Toast.makeText(
+            context,
+            languageViewModel.getString("settings_saved_success"),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    fun discardChanges() {
+        stagedThemeMode = themeMode
+        stagedNotification = isNotificationEnabled
+        stagedHaptic = isHapticEnabled
+        stagedShutterSound = isShutterSoundEnabled
+        stagedAutoEdge = isAutoEdgeDetectionEnabled
+        com.swiftapp.utils.HapticManager.light()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -2336,11 +2581,85 @@ fun SettingsContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            text = languageViewModel.getString("settings_title"),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-        )
+        // Header with Save Changes action if modified
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = languageViewModel.getString("settings_title"),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.ExtraBold,
+            )
+
+            if (hasUnsavedChanges) {
+                TactileButton(
+                    onClick = { saveAllSettings() },
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    modifier = Modifier.height(38.dp)
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(languageViewModel.getString("btn_save"), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            }
+        }
+
+        // Unsaved Changes Banner
+        if (hasUnsavedChanges) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = languageViewModel.getString("settings_unsaved_banner"),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        TextButton(
+                            onClick = { discardChanges() },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(languageViewModel.getString("btn_discard"), color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                        }
+                        Button(
+                            onClick = { saveAllSettings() },
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text(languageViewModel.getString("btn_save"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
 
         // Account Group
         SettingsGroupCard(title = languageViewModel.getString("settings_account")) {
@@ -2348,6 +2667,8 @@ fun SettingsContent(
                 icon = Icons.Outlined.Person,
                 label = "User Profile",
                 subtitle = "user@swift.pdf",
+                iconTint = MaterialTheme.colorScheme.primary,
+                iconBgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
                 onClick = {},
             )
         }
@@ -2360,18 +2681,27 @@ fun SettingsContent(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text(languageViewModel.getString("settings_theme"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF6366F1).copy(alpha = 0.15f),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.DarkMode, contentDescription = null, tint = Color(0xFF6366F1), modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    Text(languageViewModel.getString("settings_theme"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 }
                 Switch(
-                    checked = themeMode == ThemeMode.DARK,
+                    checked = stagedThemeMode == ThemeMode.DARK,
                     onCheckedChange = { isDark ->
-                        themeViewModel.setThemeMode(if (isDark) ThemeMode.DARK else ThemeMode.LIGHT)
+                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
+                        stagedThemeMode = if (isDark) ThemeMode.DARK else ThemeMode.LIGHT
                     },
                 )
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2383,29 +2713,38 @@ fun SettingsContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(Icons.Outlined.Notifications, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFF59E0B).copy(alpha = 0.15f),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(20.dp))
+                        }
+                    }
                     Column {
                         Text(
                             text = languageViewModel.getString("settings_notification"),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = languageViewModel.getString("settings_notification_sub"),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 Switch(
-                    checked = isNotificationEnabled,
+                    checked = stagedNotification,
                     onCheckedChange = { isEnabled ->
-                        com.swiftapp.utils.NotificationSettingsManager.setNotificationEnabled(context, isEnabled)
+                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
+                        stagedNotification = isEnabled
                     },
                 )
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2417,43 +2756,56 @@ fun SettingsContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(Icons.Outlined.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFF43F5E).copy(alpha = 0.15f),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.Vibration, contentDescription = null, tint = Color(0xFFF43F5E), modifier = Modifier.size(20.dp))
+                        }
+                    }
                     Column {
                         Text(
                             text = languageViewModel.getString("settings_haptic"),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = languageViewModel.getString("settings_haptic_sub"),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 Switch(
-                    checked = isHapticEnabled,
+                    checked = stagedHaptic,
                     onCheckedChange = { isEnabled ->
-                        com.swiftapp.utils.HapticManager.setHapticEnabled(context, isEnabled)
+                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
+                        stagedHaptic = isEnabled
                     },
                 )
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
             SettingsRowItem(
                 icon = Icons.Outlined.DriveFileRenameOutline,
                 label = languageViewModel.getString("settings_naming_convention"),
                 subtitle = com.swiftapp.utils.FileNamingManager.getPreviewSample(namingFormat, autoTimestamp),
+                iconTint = Color(0xFF0EA5E9),
+                iconBgColor = Color(0xFF0EA5E9).copy(alpha = 0.15f),
                 onClick = { showFileNamingDialog = true },
             )
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
             SettingsRowItem(
                 icon = Icons.Outlined.Language,
                 label = languageViewModel.getString("settings_language"),
                 subtitle = "${currentLanguage.nativeName} (${currentLanguage.englishName})",
+                iconTint = Color(0xFF10B981),
+                iconBgColor = Color(0xFF10B981).copy(alpha = 0.15f),
                 onClick = { showLanguageDialog = true },
             )
         }
@@ -2465,16 +2817,19 @@ fun SettingsContent(
                 com.swiftapp.data.model.ScanFilter.BW_DOCUMENT -> languageViewModel.getString("filter_bw")
                 com.swiftapp.data.model.ScanFilter.ORIGINAL -> languageViewModel.getString("filter_original")
                 com.swiftapp.data.model.ScanFilter.GRAYSCALE -> languageViewModel.getString("filter_grayscale")
+                com.swiftapp.data.model.ScanFilter.WHITEBOARD -> "Whiteboard"
             }
 
             SettingsRowItem(
                 icon = Icons.Outlined.FilterAlt,
                 label = languageViewModel.getString("settings_default_filter"),
                 subtitle = filterSubtitle,
+                iconTint = Color(0xFF8B5CF6),
+                iconBgColor = Color(0xFF8B5CF6).copy(alpha = 0.15f),
                 onClick = { showScanFilterDialog = true },
             )
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2486,29 +2841,38 @@ fun SettingsContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(Icons.Outlined.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF06B6D4).copy(alpha = 0.15f),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.AutoMirrored.Outlined.VolumeUp, contentDescription = null, tint = Color(0xFF06B6D4), modifier = Modifier.size(20.dp))
+                        }
+                    }
                     Column {
                         Text(
                             text = languageViewModel.getString("settings_shutter_sound"),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = languageViewModel.getString("settings_shutter_sound_sub"),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 Switch(
-                    checked = isShutterSoundEnabled,
+                    checked = stagedShutterSound,
                     onCheckedChange = { isEnabled ->
-                        com.swiftapp.utils.ScannerSettingsManager.setShutterSoundEnabled(context, isEnabled)
+                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
+                        stagedShutterSound = isEnabled
                     },
                 )
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2520,24 +2884,33 @@ fun SettingsContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(Icons.Outlined.Crop, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF14B8A6).copy(alpha = 0.15f),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.Crop, contentDescription = null, tint = Color(0xFF14B8A6), modifier = Modifier.size(20.dp))
+                        }
+                    }
                     Column {
                         Text(
                             text = languageViewModel.getString("settings_auto_edge"),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = languageViewModel.getString("settings_auto_edge_sub"),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 Switch(
-                    checked = isAutoEdgeDetectionEnabled,
+                    checked = stagedAutoEdge,
                     onCheckedChange = { isEnabled ->
-                        com.swiftapp.utils.ScannerSettingsManager.setAutoEdgeDetection(context, isEnabled)
+                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
+                        stagedAutoEdge = isEnabled
                     },
                 )
             }
@@ -2556,10 +2929,12 @@ fun SettingsContent(
                 icon = if (isPermGranted) Icons.Outlined.CheckCircle else Icons.Outlined.FolderShared,
                 label = languageViewModel.getString("settings_storage_permission"),
                 subtitle = storagePermSubtitle,
+                iconTint = if (isPermGranted) Color(0xFF10B981) else MaterialTheme.colorScheme.error,
+                iconBgColor = (if (isPermGranted) Color(0xFF10B981) else MaterialTheme.colorScheme.error).copy(alpha = 0.15f),
                 onClick = { showStoragePermissionDialog = true },
             )
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
             val saveLocSubtitle = when (currentSaveLoc) {
                 com.swiftapp.utils.SaveLocation.SWIFT_FOLDER -> "${languageViewModel.getString("save_loc_swift")} (/Documents/SwiftPDF)"
@@ -2571,18 +2946,24 @@ fun SettingsContent(
                 icon = Icons.Outlined.FolderSpecial,
                 label = languageViewModel.getString("settings_save_location"),
                 subtitle = saveLocSubtitle,
+                iconTint = Color(0xFF3B82F6),
+                iconBgColor = Color(0xFF3B82F6).copy(alpha = 0.15f),
                 onClick = { showSaveLocationDialog = true },
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
             SettingsRowItem(
                 icon = Icons.Outlined.CloudQueue,
                 label = languageViewModel.getString("settings_cloud"),
+                iconTint = Color(0xFF64748B),
+                iconBgColor = Color(0xFF64748B).copy(alpha = 0.15f),
                 onClick = {},
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
             SettingsRowItem(
                 icon = Icons.Outlined.FolderZip,
                 label = languageViewModel.getString("settings_dropbox"),
+                iconTint = Color(0xFF64748B),
+                iconBgColor = Color(0xFF64748B).copy(alpha = 0.15f),
                 onClick = {},
             )
         }
@@ -2600,13 +2981,17 @@ fun SettingsContent(
                 icon = Icons.Outlined.Security,
                 label = languageViewModel.getString("settings_app_lock"),
                 subtitle = lockSubtitle,
+                iconTint = Color(0xFF8B5CF6),
+                iconBgColor = Color(0xFF8B5CF6).copy(alpha = 0.15f),
                 onClick = { showAppLockDialog = true },
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
             SettingsRowItem(
                 icon = Icons.Outlined.PrivacyTip,
                 label = languageViewModel.getString("settings_privacy_terms"),
                 subtitle = languageViewModel.getString("settings_privacy_terms_sub"),
+                iconTint = Color(0xFF10B981),
+                iconBgColor = Color(0xFF10B981).copy(alpha = 0.15f),
                 onClick = { showPrivacyDialog = true },
             )
         }
@@ -2617,13 +3002,17 @@ fun SettingsContent(
                 icon = Icons.Outlined.Info,
                 label = languageViewModel.getString("settings_about"),
                 subtitle = "Swift v$versionName (Build $versionCode)",
+                iconTint = MaterialTheme.colorScheme.primary,
+                iconBgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
                 onClick = { showAboutDialog = true },
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
             SettingsRowItem(
                 icon = Icons.Outlined.Share,
                 label = languageViewModel.getString("settings_share_app"),
                 subtitle = languageViewModel.getString("settings_share_app_sub"),
+                iconTint = Color(0xFF0EA5E9),
+                iconBgColor = Color(0xFF0EA5E9).copy(alpha = 0.15f),
                 onClick = {
                     val sendIntent = Intent().apply {
                         action = Intent.ACTION_SEND
@@ -2637,19 +3026,43 @@ fun SettingsContent(
                     context.startActivity(shareIntent)
                 },
             )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
             SettingsRowItem(
                 icon = Icons.Outlined.Email,
                 label = languageViewModel.getString("settings_contact_dev"),
                 subtitle = languageViewModel.getString("settings_contact_dev_sub"),
+                iconTint = Color(0xFFF59E0B),
+                iconBgColor = Color(0xFFF59E0B).copy(alpha = 0.15f),
                 onClick = { showContactDevDialog = true },
             )
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
             SettingsRowItem(
                 icon = Icons.Outlined.BugReport,
                 label = languageViewModel.getString("settings_bug_report"),
                 subtitle = languageViewModel.getString("settings_bug_report_sub"),
+                iconTint = Color(0xFFEF4444),
+                iconBgColor = Color(0xFFEF4444).copy(alpha = 0.15f),
                 onClick = { showBugReportDialog = true },
             )
+        }
+
+        // Dedicated Bottom Save Button
+        if (hasUnsavedChanges) {
+            Spacer(modifier = Modifier.height(4.dp))
+            TactileButton(
+                onClick = { saveAllSettings() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = languageViewModel.getString("btn_save_settings"),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
         }
     }
 }
@@ -2659,18 +3072,20 @@ fun SettingsGroupCard(title: String, content: @Composable ColumnScope.() -> Unit
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = title,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp)
         )
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 content = content,
             )
@@ -2683,27 +3098,35 @@ fun SettingsRowItem(
     icon: ImageVector,
     label: String,
     subtitle: String? = null,
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    iconBgColor: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
     onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .bounceClick { onClick() },
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Column {
-                Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                if (subtitle != null) {
-                    Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+        Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = iconBgColor,
+            modifier = Modifier.size(38.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
             }
         }
-        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Gray)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
 }
+
 
 @Composable
 fun CompressDialog(onConfirm: (Float) -> Unit, onDismiss: () -> Unit) {
@@ -2977,12 +3400,11 @@ fun SuccessCard(state: PdfUiState.Success, onDismiss: () -> Unit, context: Conte
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                    AnimatedSuccessCheckmark(
+                        size = 30.dp,
+                        circleColor = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = "Operation Completed!",

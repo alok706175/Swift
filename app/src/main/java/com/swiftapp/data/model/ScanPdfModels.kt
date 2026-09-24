@@ -10,7 +10,36 @@ enum class ScanFilter(val displayName: String, val description: String) {
     ORIGINAL("Original", "Natural photo colors with balanced contrast"),
     MAGIC_COLOR("Magic Color", "Sharp text with brightened background"),
     BW_DOCUMENT("B&W Document", "High-contrast clean black & white for documents"),
+    WHITEBOARD("Whiteboard", "Glare-free clean high contrast for boards"),
     GRAYSCALE("Grayscale", "Smooth monochrome grayscale transitions")
+}
+
+/**
+ * Dedicated Scanner Capture Modes.
+ */
+enum class ScanCaptureMode(val displayName: String, val description: String) {
+    DOCUMENT("Document", "Standard multi-page document scanning"),
+    ID_CARD("ID Card", "Capture Front & Back and merge onto 1 single page"),
+    BOOK("Book", "Split two-page open book spread into 2 separate pages"),
+    WHITEBOARD("Whiteboard", "Optimized glare reduction for whiteboards"),
+    BUSINESS_CARD("Business Card", "Compact card aspect ratio crop")
+}
+
+/**
+ * Flash & Torch Control Modes.
+ */
+enum class FlashMode(val displayName: String) {
+    OFF("Off"),
+    TORCH("Torch"),
+    AUTO("Auto")
+}
+
+/**
+ * Step state for 2-Sided ID Card Scanning.
+ */
+enum class IdCardStep {
+    FRONT,
+    BACK
 }
 
 /**

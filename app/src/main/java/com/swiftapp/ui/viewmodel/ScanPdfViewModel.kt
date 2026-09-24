@@ -5,9 +5,12 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.swiftapp.data.ScanPdfService
+import com.swiftapp.data.model.FlashMode
+import com.swiftapp.data.model.IdCardStep
 import com.swiftapp.data.model.MarginOption
 import com.swiftapp.data.model.PageSizeOption
 import com.swiftapp.data.model.PolygonCorners
+import com.swiftapp.data.model.ScanCaptureMode
 import com.swiftapp.data.model.ScanExportConfig
 import com.swiftapp.data.model.ScanFilter
 import com.swiftapp.data.model.ScanPageItem
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -25,6 +29,20 @@ import java.util.Locale
 import java.util.UUID
 
 class ScanPdfViewModel : ViewModel() {
+
+    private val _captureMode = MutableStateFlow(ScanCaptureMode.DOCUMENT)
+    val captureMode: StateFlow<ScanCaptureMode> = _captureMode.asStateFlow()
+
+    private val _isAutoCapture = MutableStateFlow(false)
+    val isAutoCapture: StateFlow<Boolean> = _isAutoCapture.asStateFlow()
+
+    private val _flashMode = MutableStateFlow(FlashMode.OFF)
+    val flashMode: StateFlow<FlashMode> = _flashMode.asStateFlow()
+
+    private val _idCardStep = MutableStateFlow(IdCardStep.FRONT)
+    val idCardStep: StateFlow<IdCardStep> = _idCardStep.asStateFlow()
+
+    private var idCardFrontFile: File? = null
 
     private val _pages = MutableStateFlow<List<ScanPageItem>>(emptyList())
     val pages: StateFlow<List<ScanPageItem>> = _pages.asStateFlow()
@@ -50,6 +68,31 @@ class ScanPdfViewModel : ViewModel() {
 
     private val _isExportDialogVisible = MutableStateFlow(false)
     val isExportDialogVisible: StateFlow<Boolean> = _isExportDialogVisible.asStateFlow()
+
+    fun setCaptureMode(mode: ScanCaptureMode) {
+        _captureMode.value = mode
+        if (mode == ScanCaptureMode.ID_CARD) {
+            _idCardStep.value = IdCardStep.FRONT
+            idCardFrontFile = null
+        }
+    }
+
+    fun toggleAutoCapture() {
+        _isAutoCapture.update { !it }
+    }
+
+    fun cycleFlashMode() {
+        _flashMode.value = when (_flashMode.value) {
+            FlashMode.OFF -> FlashMode.TORCH
+            FlashMode.TORCH -> FlashMode.AUTO
+            FlashMode.AUTO -> FlashMode.OFF
+        }
+    }
+
+    fun resetIdCardCapture() {
+        _idCardStep.value = IdCardStep.FRONT
+        idCardFrontFile = null
+    }
 
     private fun defaultFileName(): String {
         val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
@@ -79,34 +122,133 @@ class ScanPdfViewModel : ViewModel() {
     }
 
     /**
-     * Add an image captured directly from device camera.
+     * Add an image captured directly from device camera with mode-specific processing.
      */
     fun addCapturedImage(context: Context, rawFile: File) {
         viewModelScope.launch(Dispatchers.IO) {
             com.swiftapp.utils.ScannerSettingsManager.playShutterSound()
-            val dimensions = ScanPdfService.getImageDimensions(rawFile)
-            val defaultFilter = com.swiftapp.utils.ScannerSettingsManager.defaultFilterFlow.value
-            val initialCorners = com.swiftapp.utils.ScannerSettingsManager.getInitialCorners()
+            val currentMode = _captureMode.value
 
-            val newItem = ScanPageItem(
-                id = UUID.randomUUID().toString(),
-                originalImageFile = rawFile,
-                width = dimensions.first,
-                height = dimensions.second,
-                corners = initialCorners,
-                filter = defaultFilter,
-                isProcessing = true
-            )
+            when (currentMode) {
+                ScanCaptureMode.ID_CARD -> {
+                    if (_idCardStep.value == IdCardStep.FRONT) {
+                        idCardFrontFile = rawFile
+                        _idCardStep.value = IdCardStep.BACK
+                    } else {
+                        val front = idCardFrontFile
+                        if (front != null) {
+                            _uiState.value = ScanUiState.Processing("Merging Front & Back ID Card...", 0.3f)
+                            val mergedFile = ScanPdfService.mergeIdCardSides(context, front, rawFile)
+                            _uiState.value = ScanUiState.Idle
+                            _idCardStep.value = IdCardStep.FRONT
+                            idCardFrontFile = null
 
-            _pages.update { it + newItem }
-            val newIndex = _pages.value.size - 1
-            _activePageIndex.value = newIndex
+                            val fileToUse = mergedFile ?: rawFile
+                            val dimensions = ScanPdfService.getImageDimensions(fileToUse)
+                            val newItem = ScanPageItem(
+                                id = UUID.randomUUID().toString(),
+                                originalImageFile = fileToUse,
+                                width = dimensions.first,
+                                height = dimensions.second,
+                                corners = PolygonCorners.FULL,
+                                filter = ScanFilter.ORIGINAL,
+                                isProcessing = true
+                            )
+                            _pages.update { it + newItem }
+                            val newIndex = _pages.value.size - 1
+                            _activePageIndex.value = newIndex
+                            val previewFile = ScanPdfService.generatePreviewImage(context, newItem)
+                            _pages.update { list ->
+                                list.mapIndexed { idx, item ->
+                                    if (idx == newIndex) item.copy(previewImageFile = previewFile, isProcessing = false) else item
+                                }
+                            }
+                        }
+                    }
+                }
+                ScanCaptureMode.BOOK -> {
+                    _uiState.value = ScanUiState.Processing("Splitting two-page book spread...", 0.2f)
+                    val splitFiles = ScanPdfService.splitBookPages(context, rawFile)
+                    _uiState.value = ScanUiState.Idle
 
-            // Generate initial preview
-            val previewFile = ScanPdfService.generatePreviewImage(context, newItem)
-            _pages.update { list ->
-                list.mapIndexed { idx, item ->
-                    if (idx == newIndex) item.copy(previewImageFile = previewFile, isProcessing = false) else item
+                    val filesToAdd = if (splitFiles != null) listOf(splitFiles.first, splitFiles.second) else listOf(rawFile)
+                    val newItems = mutableListOf<ScanPageItem>()
+
+                    for (file in filesToAdd) {
+                        val dimensions = ScanPdfService.getImageDimensions(file)
+                        val newItem = ScanPageItem(
+                            id = UUID.randomUUID().toString(),
+                            originalImageFile = file,
+                            width = dimensions.first,
+                            height = dimensions.second,
+                            corners = PolygonCorners.FULL,
+                            filter = ScanFilter.MAGIC_COLOR,
+                            isProcessing = true
+                        )
+                        newItems.add(newItem)
+                    }
+
+                    val startingIndex = _pages.value.size
+                    _pages.update { it + newItems }
+                    _activePageIndex.value = startingIndex
+
+                    for ((i, item) in newItems.withIndex()) {
+                        val previewFile = ScanPdfService.generatePreviewImage(context, item)
+                        val targetIndex = startingIndex + i
+                        _pages.update { list ->
+                            list.mapIndexed { idx, itm ->
+                                if (idx == targetIndex) itm.copy(previewImageFile = previewFile, isProcessing = false) else itm
+                            }
+                        }
+                    }
+                }
+                ScanCaptureMode.WHITEBOARD -> {
+                    val dimensions = ScanPdfService.getImageDimensions(rawFile)
+                    val initialCorners = com.swiftapp.utils.ScannerSettingsManager.getInitialCorners()
+                    val newItem = ScanPageItem(
+                        id = UUID.randomUUID().toString(),
+                        originalImageFile = rawFile,
+                        width = dimensions.first,
+                        height = dimensions.second,
+                        corners = initialCorners,
+                        filter = ScanFilter.WHITEBOARD,
+                        isProcessing = true
+                    )
+                    _pages.update { it + newItem }
+                    val newIndex = _pages.value.size - 1
+                    _activePageIndex.value = newIndex
+                    val previewFile = ScanPdfService.generatePreviewImage(context, newItem)
+                    _pages.update { list ->
+                        list.mapIndexed { idx, item ->
+                            if (idx == newIndex) item.copy(previewImageFile = previewFile, isProcessing = false) else item
+                        }
+                    }
+                }
+                ScanCaptureMode.DOCUMENT, ScanCaptureMode.BUSINESS_CARD -> {
+                    val dimensions = ScanPdfService.getImageDimensions(rawFile)
+                    val defaultFilter = com.swiftapp.utils.ScannerSettingsManager.defaultFilterFlow.value
+                    val initialCorners = com.swiftapp.utils.ScannerSettingsManager.getInitialCorners()
+
+                    val newItem = ScanPageItem(
+                        id = UUID.randomUUID().toString(),
+                        originalImageFile = rawFile,
+                        width = dimensions.first,
+                        height = dimensions.second,
+                        corners = initialCorners,
+                        filter = defaultFilter,
+                        isProcessing = true
+                    )
+
+                    _pages.update { it + newItem }
+                    val newIndex = _pages.value.size - 1
+                    _activePageIndex.value = newIndex
+
+                    val previewFile = ScanPdfService.generatePreviewImage(context, newItem)
+                    _pages.update { list ->
+                        list.mapIndexed { idx, item ->
+                            if (idx == newIndex) item.copy(previewImageFile = previewFile, isProcessing = false) else item
+                        }
+                    }
                 }
             }
         }
@@ -309,6 +451,91 @@ class ScanPdfViewModel : ViewModel() {
                     _uiState.value = ScanUiState.Error(error.localizedMessage ?: "Failed to compile scanned PDF")
                 }
             )
+        }
+    }
+
+    /**
+     * Save the currently active scanned page as a JPEG to the gallery.
+     */
+    fun saveCurrentPageAsJpeg(context: Context, onResult: (Boolean, String) -> Unit) {
+        val pagesList = _pages.value
+        val index = _activePageIndex.value
+        val page = pagesList.getOrNull(index) ?: return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = ScanPdfService.savePageAsJpeg(
+                context = context,
+                pageItem = page,
+                pageNumber = index + 1,
+                totalCount = pagesList.size
+            )
+            withContext(Dispatchers.Main) {
+                result.fold(
+                    onSuccess = { file ->
+                        com.swiftapp.utils.HapticManager.success()
+                        onResult(true, "Page ${index + 1} saved to Pictures/SwiftScans")
+                    },
+                    onFailure = { err ->
+                        com.swiftapp.utils.HapticManager.error()
+                        onResult(false, err.message ?: "Failed to save image")
+                    }
+                )
+            }
+        }
+    }
+
+    /**
+     * Save all scanned pages as JPEGs to the gallery.
+     */
+    fun saveAllPagesAsJpeg(context: Context, onResult: (Boolean, String) -> Unit) {
+        val pagesList = _pages.value
+        if (pagesList.isEmpty()) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = ScanPdfService.saveAllPagesAsJpegs(context, pagesList)
+            withContext(Dispatchers.Main) {
+                result.fold(
+                    onSuccess = { files ->
+                        com.swiftapp.utils.HapticManager.success()
+                        onResult(true, "${files.size} pages saved to Pictures/SwiftScans")
+                    },
+                    onFailure = { err ->
+                        com.swiftapp.utils.HapticManager.error()
+                        onResult(false, err.message ?: "Failed to save images")
+                    }
+                )
+            }
+        }
+    }
+
+    /**
+     * Share currently active page as JPEG.
+     */
+    fun shareCurrentPageAsJpeg(context: Context) {
+        val pagesList = _pages.value
+        val index = _activePageIndex.value
+        val page = pagesList.getOrNull(index) ?: return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = ScanPdfService.savePageAsJpeg(context, page, index + 1, pagesList.size)
+            result.getOrNull()?.let { file ->
+                withContext(Dispatchers.Main) {
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        file
+                    )
+                    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "image/jpeg"
+                        putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                        clipData = android.content.ClipData.newRawUri(file.name, uri)
+                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    val chooser = android.content.Intent.createChooser(intent, "Share Scanned Page")
+                    chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    context.startActivity(chooser)
+                }
+            }
         }
     }
 

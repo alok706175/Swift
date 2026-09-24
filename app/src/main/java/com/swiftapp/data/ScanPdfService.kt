@@ -182,6 +182,17 @@ object ScanPdfService {
                 paint.colorFilter = ColorMatrixColorFilter(cm)
                 canvas.drawBitmap(src, 0f, 0f, paint)
             }
+            ScanFilter.WHITEBOARD -> {
+                // Whiteboard: Enhance contrast, whiten yellowish backgrounds, sharpen ink colors
+                val cm = ColorMatrix(floatArrayOf(
+                    1.45f, 0f, 0f, 0f, 25f,
+                    0f, 1.45f, 0f, 0f, 25f,
+                    0f, 0f, 1.45f, 0f, 25f,
+                    0f, 0f, 0f, 1f, 0f
+                ))
+                paint.colorFilter = ColorMatrixColorFilter(cm)
+                canvas.drawBitmap(src, 0f, 0f, paint)
+            }
             ScanFilter.GRAYSCALE -> {
                 val cm = ColorMatrix().apply {
                     setSaturation(0f)
@@ -214,6 +225,110 @@ object ScanPdfService {
         }
 
         return result
+    }
+
+    /**
+     * Splits an open two-page book image spread into Left Page and Right Page files.
+     */
+    suspend fun splitBookPages(context: Context, imageFile: File): Pair<File, File>? = withContext(Dispatchers.IO) {
+        val bitmap = decodeSampledBitmap(imageFile, 2400) ?: return@withContext null
+        try {
+            val width = bitmap.width
+            val height = bitmap.height
+            val halfWidth = width / 2
+
+            val leftBitmap = Bitmap.createBitmap(bitmap, 0, 0, halfWidth, height)
+            val rightBitmap = Bitmap.createBitmap(bitmap, halfWidth, 0, halfWidth, height)
+
+            val leftFile = File(context.cacheDir, "book_left_${System.currentTimeMillis()}.jpg")
+            val rightFile = File(context.cacheDir, "book_right_${System.currentTimeMillis() + 1}.jpg")
+
+            FileOutputStream(leftFile).use { fos -> leftBitmap.compress(Bitmap.CompressFormat.JPEG, 92, fos) }
+            FileOutputStream(rightFile).use { fos -> rightBitmap.compress(Bitmap.CompressFormat.JPEG, 92, fos) }
+
+            leftBitmap.recycle()
+            rightBitmap.recycle()
+
+            Pair(leftFile, rightFile)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        } finally {
+            bitmap.recycle()
+        }
+    }
+
+    /**
+     * Merges Front & Back sides of an ID Card onto a single formatted A4 sheet.
+     */
+    suspend fun mergeIdCardSides(
+        context: Context,
+        frontFile: File,
+        backFile: File
+    ): File? = withContext(Dispatchers.IO) {
+        val frontBitmap = decodeSampledBitmap(frontFile, 1400) ?: return@withContext null
+        val backBitmap = decodeSampledBitmap(backFile, 1400) ?: return@withContext null
+
+        try {
+            // A4 sheet canvas: 1600 x 2260
+            val sheetWidth = 1600
+            val sheetHeight = 2260
+            val mergedBitmap = Bitmap.createBitmap(sheetWidth, sheetHeight, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(mergedBitmap)
+
+            // Pure white background
+            canvas.drawColor(android.graphics.Color.WHITE)
+
+            val cardTargetWidth = 1250
+            val cardTargetHeight = (cardTargetWidth * (frontBitmap.height.toFloat() / frontBitmap.width.toFloat())).toInt().coerceIn(600, 800)
+
+            val leftMargin = (sheetWidth - cardTargetWidth) / 2f
+            val topMargin = 220f
+            val spacing = 180f
+
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+            val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.LTGRAY
+                style = Paint.Style.STROKE
+                strokeWidth = 3f
+            }
+            val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.DKGRAY
+                textSize = 36f
+                isFakeBoldText = true
+            }
+
+            // --- Front Card ---
+            canvas.drawText("FRONT SIDE", leftMargin + 10, topMargin - 20, textPaint)
+            val frontRect = android.graphics.RectF(leftMargin, topMargin, leftMargin + cardTargetWidth, topMargin + cardTargetHeight)
+            val scaledFront = Bitmap.createScaledBitmap(frontBitmap, cardTargetWidth, cardTargetHeight, true)
+            canvas.drawBitmap(scaledFront, leftMargin, topMargin, paint)
+            canvas.drawRoundRect(frontRect, 24f, 24f, strokePaint)
+            if (scaledFront != frontBitmap) scaledFront.recycle()
+
+            // --- Back Card ---
+            val backTop = topMargin + cardTargetHeight + spacing
+            canvas.drawText("BACK SIDE", leftMargin + 10, backTop - 20, textPaint)
+            val backRect = android.graphics.RectF(leftMargin, backTop, leftMargin + cardTargetWidth, backTop + cardTargetHeight)
+            val scaledBack = Bitmap.createScaledBitmap(backBitmap, cardTargetWidth, cardTargetHeight, true)
+            canvas.drawBitmap(scaledBack, leftMargin, backTop, paint)
+            canvas.drawRoundRect(backRect, 24f, 24f, strokePaint)
+            if (scaledBack != backBitmap) scaledBack.recycle()
+
+            val mergedFile = File(context.cacheDir, "id_card_merged_${System.currentTimeMillis()}.jpg")
+            FileOutputStream(mergedFile).use { fos ->
+                mergedBitmap.compress(Bitmap.CompressFormat.JPEG, 92, fos)
+            }
+
+            mergedBitmap.recycle()
+            mergedFile
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        } finally {
+            frontBitmap.recycle()
+            backBitmap.recycle()
+        }
     }
 
     /**
@@ -368,6 +483,91 @@ object ScanPdfService {
             val fileName = file.name
             val savedFile = com.swiftapp.utils.StorageLocationManager.savePdfToStorage(context, file, fileName)
             "Saved to ${savedFile.absolutePath}"
+        }
+    }
+
+    /**
+     * Save an individual scanned page as a high-quality JPEG to device gallery/Pictures.
+     */
+    suspend fun savePageAsJpeg(
+        context: Context,
+        pageItem: ScanPageItem,
+        pageNumber: Int = 1,
+        totalCount: Int = 1
+    ): Result<File> = withContext(Dispatchers.IO) {
+        runCatching {
+            val pageBitmap = processPageBitmap(
+                imageFile = pageItem.originalImageFile,
+                corners = pageItem.corners,
+                rotation = pageItem.rotationDegrees,
+                filter = pageItem.filter,
+                maxDimension = 2400
+            ) ?: throw IllegalStateException("Could not render page image")
+
+            val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+            val suffix = if (totalCount > 1) "_p$pageNumber" else ""
+            val fileName = "SwiftScan_${timestamp}${suffix}.jpg"
+
+            val targetFile: File
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/SwiftScans")
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+
+                val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                    ?: throw IllegalStateException("Failed to create MediaStore entry")
+
+                context.contentResolver.openOutputStream(uri)?.use { os ->
+                    pageBitmap.compress(Bitmap.CompressFormat.JPEG, 95, os)
+                }
+
+                contentValues.clear()
+                contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                context.contentResolver.update(uri, contentValues, null, null)
+
+                targetFile = File(context.cacheDir, fileName)
+                FileOutputStream(targetFile).use { fos ->
+                    pageBitmap.compress(Bitmap.CompressFormat.JPEG, 95, fos)
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                val picturesDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "SwiftScans")
+                if (!picturesDir.exists()) picturesDir.mkdirs()
+                targetFile = File(picturesDir, fileName)
+                FileOutputStream(targetFile).use { fos ->
+                    pageBitmap.compress(Bitmap.CompressFormat.JPEG, 95, fos)
+                }
+                android.media.MediaScannerConnection.scanFile(
+                    context,
+                    arrayOf(targetFile.absolutePath),
+                    arrayOf("image/jpeg"),
+                    null
+                )
+            }
+
+            pageBitmap.recycle()
+            targetFile
+        }
+    }
+
+    /**
+     * Save all scanned pages as high-quality JPEGs to the device gallery.
+     */
+    suspend fun saveAllPagesAsJpegs(
+        context: Context,
+        pages: List<ScanPageItem>
+    ): Result<List<File>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val savedFiles = mutableListOf<File>()
+            for ((index, page) in pages.withIndex()) {
+                val result = savePageAsJpeg(context, page, pageNumber = index + 1, totalCount = pages.size)
+                result.getOrNull()?.let { savedFiles.add(it) }
+            }
+            if (savedFiles.isEmpty()) throw IllegalStateException("Failed to save pages as images")
+            savedFiles
         }
     }
 }
