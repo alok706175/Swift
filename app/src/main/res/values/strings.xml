@@ -6,6 +6,6 @@
     <string name="view_pdf_info">Analyze PDF</string>
     <string name="image_preview">Image Preview (Coil)</string>
     <string name="recent_documents">Recent Documents</string>
-    <string name="app_about_description">Swift PDF is designed for high-performance PDF manipulation directly on your mobile device. No servers, no uploads, just fast and secure tools.</string>
+    <string name="app_about_description">Swift is designed for high-performance PDF manipulation directly on your mobile device. No servers, no uploads, just fast and secure tools.</string>
     <string name="app_version_display">1.0.0 (Swift)</string>
 </resources>

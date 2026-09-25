@@ -5,14 +5,17 @@ import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -21,6 +24,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -35,10 +39,18 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.swiftapp.data.UnlockPdfService
+import com.swiftapp.data.model.EncryptionStatus
 import com.swiftapp.ui.components.*
+import com.swiftapp.ui.theme.SwiftCoral
+import com.swiftapp.utils.HapticManager
 import com.swiftapp.utils.PdfHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -48,16 +60,20 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import kotlin.math.roundToInt
 
-import com.swiftapp.data.UnlockPdfService
-import com.swiftapp.data.model.EncryptionStatus
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.foundation.text.KeyboardOptions
+import android.content.Intent
+import android.media.MediaScannerConnection
+import android.os.Environment
+import android.widget.Toast
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+
+enum class ExportRangeType {
+    ALL_PAGES,
+    CURRENT_PAGE,
+    CUSTOM
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,8 +113,15 @@ fun PdfReaderScreen(
     var isSearching by remember { mutableStateOf(false) }
     var isNightMode by remember { mutableStateOf(false) }
 
-    // Editor / Annotation Tools
-    var activeTool by remember { mutableStateOf("none") }
+    // 3-Dot Menu & Action Dialog States
+    var showMenu by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showSaveAsImagesDialog by remember { mutableStateOf(false) }
+    var selectedImageFormat by remember { mutableStateOf("PNG") }
+    var exportRangeType by remember { mutableStateOf(ExportRangeType.ALL_PAGES) }
+    var customRangeInput by remember { mutableStateOf("") }
+    var isSavingImages by remember { mutableStateOf(false) }
     var showSignatureDialog by remember { mutableStateOf(false) }
     var signatureText by remember { mutableStateOf("Jane Doe") }
     var appliedSignature by remember { mutableStateOf<String?>(null) }
@@ -237,7 +260,7 @@ fun PdfReaderScreen(
                     } else {
                         Column {
                             Text(
-                                text = file.name,
+                                text = activeFile.name,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
@@ -274,6 +297,91 @@ fun PdfReaderScreen(
                         icon = if (isSearchActive) Icons.Default.Close else Icons.Default.Search,
                         contentDescription = "Search Text"
                     )
+
+                    // 3 Vertical Dots Menu (Right of Search Icon)
+                    Box {
+                        TactileIconButton(
+                            onClick = { showMenu = true },
+                            icon = Icons.Default.MoreVert,
+                            contentDescription = "More Options"
+                        )
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Rename", fontWeight = FontWeight.Medium) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.EditNote,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    showRenameDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Delete,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    showDeleteDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Edit", fontWeight = FontWeight.Medium) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Draw,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    showSignatureDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Save as Images", fontWeight = FontWeight.Medium) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Image,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    showSaveAsImagesDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Share", fontWeight = FontWeight.Medium) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Share,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    sharePdfFile(context, activeFile.path)
+                                }
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -687,50 +795,389 @@ fun PdfReaderScreen(
                     }
                 }
 
-                // Floating Annotation Bar
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 12.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 8.dp,
-                    tonalElevation = 4.dp,
-                ) {
-                    Column(
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 6.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        AnnotationIconButton(
-                            icon = Icons.Outlined.Crop,
-                            isSelected = activeTool == "crop",
-                            onClick = { activeTool = if (activeTool == "crop") "none" else "crop" },
-                        )
-                        AnnotationIconButton(
-                            icon = Icons.Outlined.Edit,
-                            isSelected = activeTool == "sign",
-                            onClick = { 
-                                activeTool = if (activeTool == "sign") "none" else "sign"
-                                if (activeTool == "sign") showSignatureDialog = true
-                            },
-                        )
-                        AnnotationIconButton(
-                            icon = Icons.Outlined.TextFields,
-                            isSelected = activeTool == "text",
-                            onClick = { activeTool = if (activeTool == "text") "none" else "text" },
-                        )
-                    }
-                }
             }
         }
     }
 
-    // Quick Sign Dialog
+    // Rename PDF Dialog
+    if (showRenameDialog) {
+        var newNameText by remember { mutableStateOf(activeFile.nameWithoutExtension) }
+        AlertDialog(
+            onDismissRequest = { showRenameDialog = false },
+            title = { Text("Rename PDF", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Enter a new file name:", style = MaterialTheme.typography.bodyMedium)
+                    OutlinedTextField(
+                        value = newNameText,
+                        onValueChange = { newNameText = it },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val clean = newNameText.trim()
+                        if (clean.isNotEmpty()) {
+                            val newFileName = if (clean.endsWith(".pdf", ignoreCase = true)) clean else "$clean.pdf"
+                            val newTarget = File(activeFile.parentFile, newFileName)
+                            if (activeFile.renameTo(newTarget)) {
+                                activeFile = newTarget
+                                Toast.makeText(context, "Renamed successfully", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Rename failed", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        showRenameDialog = false
+                    },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Rename")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Delete PDF Confirmation Dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = { Text("Delete PDF?", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete \"${activeFile.name}\"? This action cannot be undone.",
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        if (activeFile.delete()) {
+                            Toast.makeText(context, "File deleted", Toast.LENGTH_SHORT).show()
+                        }
+                        onBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Save as Images Dialog (JPG / JPEG / PNG)
+    if (showSaveAsImagesDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isSavingImages) showSaveAsImagesDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Image,
+                    contentDescription = null,
+                    tint = SwiftCoral,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = { Text("Save as Images", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text("Choose image format and export range:", style = MaterialTheme.typography.bodyMedium)
+
+                    // Format Selector: JPG, JPEG, PNG
+                    Text("Image Format", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium, color = SwiftCoral)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("PNG", "JPG", "JPEG").forEach { format ->
+                            val isSelected = selectedImageFormat == format
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { selectedImageFormat = format },
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(
+                                    width = if (isSelected) 2.dp else 1.dp,
+                                    color = if (isSelected) SwiftCoral else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+                                ),
+                                color = if (isSelected) SwiftCoral.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = format,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) SwiftCoral else MaterialTheme.colorScheme.onSurface,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Page Range Selector
+                    Text("Export Range", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium, color = SwiftCoral)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        // 1. All Pages
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { exportRangeType = ExportRangeType.ALL_PAGES },
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (exportRangeType == ExportRangeType.ALL_PAGES) SwiftCoral.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("All Pages ($pageCount ${if (pageCount == 1) "Page" else "Pages"})", style = MaterialTheme.typography.bodyMedium)
+                                RadioButton(
+                                    selected = exportRangeType == ExportRangeType.ALL_PAGES,
+                                    onClick = { exportRangeType = ExportRangeType.ALL_PAGES },
+                                    colors = RadioButtonDefaults.colors(selectedColor = SwiftCoral)
+                                )
+                            }
+                        }
+
+                        // 2. Current Page Only
+                        val currentPage = (listState.firstVisibleItemIndex + 1).coerceAtMost(pageCount.coerceAtLeast(1))
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { exportRangeType = ExportRangeType.CURRENT_PAGE },
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (exportRangeType == ExportRangeType.CURRENT_PAGE) SwiftCoral.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Current Page Only (Page $currentPage)", style = MaterialTheme.typography.bodyMedium)
+                                RadioButton(
+                                    selected = exportRangeType == ExportRangeType.CURRENT_PAGE,
+                                    onClick = { exportRangeType = ExportRangeType.CURRENT_PAGE },
+                                    colors = RadioButtonDefaults.colors(selectedColor = SwiftCoral)
+                                )
+                            }
+                        }
+
+                        // 3. Custom Range
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { exportRangeType = ExportRangeType.CUSTOM },
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (exportRangeType == ExportRangeType.CUSTOM) SwiftCoral.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Custom Range (e.g. 1-3, 5)", style = MaterialTheme.typography.bodyMedium)
+                                    RadioButton(
+                                        selected = exportRangeType == ExportRangeType.CUSTOM,
+                                        onClick = { exportRangeType = ExportRangeType.CUSTOM },
+                                        colors = RadioButtonDefaults.colors(selectedColor = SwiftCoral)
+                                    )
+                                }
+
+                                if (exportRangeType == ExportRangeType.CUSTOM) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    OutlinedTextField(
+                                        value = customRangeInput,
+                                        onValueChange = { customRangeInput = it },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        placeholder = { Text("e.g. 1-3, 5 (Max $pageCount)", style = MaterialTheme.typography.bodySmall) },
+                                        label = { Text("Pages (e.g. 1-3, 5)", style = MaterialTheme.typography.bodySmall) },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = SwiftCoral,
+                                            focusedLabelColor = SwiftCoral,
+                                            cursorColor = SwiftCoral
+                                        ),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done)
+                                    )
+                                    val parsedCount = remember(customRangeInput, pageCount) {
+                                        parseCustomPages(customRangeInput, pageCount).size
+                                    }
+                                    if (customRangeInput.isNotBlank()) {
+                                        Text(
+                                            text = if (parsedCount > 0) "$parsedCount page(s) will be exported" else "No valid pages in 1-$pageCount",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (parsedCount > 0) SwiftCoral else MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.padding(top = 4.dp, start = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (isSavingImages) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = SwiftCoral)
+                            Text("Exporting and saving images...", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (!isSavingImages) {
+                            isSavingImages = true
+                            scope.launch(Dispatchers.IO) {
+                                try {
+                                    var pfd: ParcelFileDescriptor? = null
+                                    try {
+                                        pfd = ParcelFileDescriptor.open(activeFile, ParcelFileDescriptor.MODE_READ_ONLY)
+                                    } catch (_: Exception) {}
+
+                                    if (pfd == null) {
+                                        val temp = File(context.cacheDir, "temp_render_${System.currentTimeMillis()}.pdf")
+                                        FileInputStream(activeFile).use { input ->
+                                            FileOutputStream(temp).use { output -> input.copyTo(output) }
+                                        }
+                                        pfd = ParcelFileDescriptor.open(temp, ParcelFileDescriptor.MODE_READ_ONLY)
+                                    }
+
+                                    val nonNullPfd = pfd ?: throw IllegalStateException("Could not open file descriptor")
+                                    val renderer = PdfRenderer(nonNullPfd)
+                                    val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                                    val outputDir = File(picturesDir, "SwiftPDF").apply { if (!exists()) mkdirs() }
+
+                                    val baseName = activeFile.nameWithoutExtension
+                                    val timestamp = System.currentTimeMillis()
+                                    val ext = if (selectedImageFormat == "PNG") "png" else if (selectedImageFormat == "JPEG") "jpeg" else "jpg"
+                                    val compressFormat = if (selectedImageFormat == "PNG") Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG
+
+                                    val pagesToExport = when (exportRangeType) {
+                                        ExportRangeType.ALL_PAGES -> (0 until renderer.pageCount).toList()
+                                        ExportRangeType.CURRENT_PAGE -> listOf(listState.firstVisibleItemIndex.coerceIn(0, (renderer.pageCount - 1).coerceAtLeast(0)))
+                                        ExportRangeType.CUSTOM -> {
+                                            val custom = parseCustomPages(customRangeInput, renderer.pageCount)
+                                            if (custom.isEmpty()) {
+                                                withContext(Dispatchers.Main) {
+                                                    isSavingImages = false
+                                                    HapticManager.error()
+                                                    Toast.makeText(context, "Please enter valid page numbers between 1 and ${renderer.pageCount}", Toast.LENGTH_LONG).show()
+                                                }
+                                                renderer.close()
+                                                nonNullPfd.close()
+                                                return@launch
+                                            }
+                                            custom
+                                        }
+                                    }
+                                    val savedFiles = mutableListOf<String>()
+
+                                    for (pageIdx in pagesToExport) {
+                                        val page = renderer.openPage(pageIdx)
+                                        val scaleFactor = 2
+                                        val bitmap = Bitmap.createBitmap(page.width * scaleFactor, page.height * scaleFactor, Bitmap.Config.ARGB_8888)
+                                        val canvas = android.graphics.Canvas(bitmap)
+                                        canvas.drawColor(android.graphics.Color.WHITE)
+                                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+
+                                        val outFile = File(outputDir, "${baseName}_page_${pageIdx + 1}_$timestamp.$ext")
+                                        FileOutputStream(outFile).use { out ->
+                                            bitmap.compress(compressFormat, 95, out)
+                                        }
+                                        savedFiles.add(outFile.absolutePath)
+                                        page.close()
+                                        bitmap.recycle()
+                                    }
+
+                                    renderer.close()
+                                    nonNullPfd.close()
+
+                                    MediaScannerConnection.scanFile(
+                                        context,
+                                        savedFiles.toTypedArray(),
+                                        arrayOf(if (selectedImageFormat == "PNG") "image/png" else "image/jpeg"),
+                                        null
+                                    )
+
+                                    withContext(Dispatchers.Main) {
+                                        isSavingImages = false
+                                        showSaveAsImagesDialog = false
+                                        HapticManager.success()
+                                        Toast.makeText(context, "Saved ${savedFiles.size} image(s) to Pictures/SwiftPDF", Toast.LENGTH_LONG).show()
+                                    }
+                                } catch (e: Exception) {
+                                    withContext(Dispatchers.Main) {
+                                        isSavingImages = false
+                                        HapticManager.error()
+                                        Toast.makeText(context, "Failed to export images: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    enabled = !isSavingImages,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SwiftCoral)
+                ) {
+                    Text("Save Images")
+                }
+            },
+            dismissButton = {
+                if (!isSavingImages) {
+                    TextButton(onClick = { showSaveAsImagesDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            },
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Quick Sign / Edit Dialog
     if (showSignatureDialog) {
         AlertDialog(
             onDismissRequest = { showSignatureDialog = false },
-            title = { Text("E-Signature Stamp") },
+            title = { Text("E-Signature Stamp", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Type signature text to place at the end of the document:")
@@ -739,6 +1186,7 @@ fun PdfReaderScreen(
                         onValueChange = { signatureText = it },
                         label = { Text("Full Name / Initials") },
                         singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -748,7 +1196,9 @@ fun PdfReaderScreen(
                     onClick = {
                         appliedSignature = signatureText
                         showSignatureDialog = false
-                    }
+                        Toast.makeText(context, "Signature applied to document", Toast.LENGTH_SHORT).show()
+                    },
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Text("Apply Signature")
                 }
@@ -758,7 +1208,28 @@ fun PdfReaderScreen(
                     Text("Cancel")
                 }
             },
+            shape = RoundedCornerShape(20.dp)
         )
+    }
+}
+
+private fun sharePdfFile(context: android.content.Context, filePath: String) {
+    try {
+        val file = File(filePath)
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/pdf"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(Intent.createChooser(intent, "Share PDF via..."))
+    } catch (e: Exception) {
+        Toast.makeText(context, "Cannot share PDF: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
     }
 }
 
@@ -928,3 +1399,34 @@ fun PdfPageItem(
         }
     }
 }
+
+private fun parseCustomPages(input: String, totalPages: Int): List<Int> {
+    if (input.isBlank()) return emptyList()
+    val pages = mutableSetOf<Int>()
+    val tokens = input.split(",", ";", " ", "\n")
+    for (token in tokens) {
+        val trimmed = token.trim()
+        if (trimmed.isEmpty()) continue
+        if (trimmed.contains("-")) {
+            val parts = trimmed.split("-")
+            if (parts.size == 2) {
+                val start = parts[0].trim().toIntOrNull()
+                val end = parts[1].trim().toIntOrNull()
+                if (start != null && end != null) {
+                    val min = minOf(start, end).coerceAtLeast(1)
+                    val max = maxOf(start, end).coerceAtMost(totalPages)
+                    for (p in min..max) {
+                        pages.add(p - 1)
+                    }
+                }
+            }
+        } else {
+            val page = trimmed.toIntOrNull()
+            if (page != null && page in 1..totalPages) {
+                pages.add(page - 1)
+            }
+        }
+    }
+    return pages.sorted()
+}
+

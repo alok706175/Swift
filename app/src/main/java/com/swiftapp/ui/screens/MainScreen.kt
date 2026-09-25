@@ -65,6 +65,7 @@ import com.swiftapp.ui.viewmodel.LanguageViewModel
 import com.swiftapp.utils.AppLanguage
 import com.swiftapp.utils.PdfFileItem
 import com.swiftapp.utils.PdfHelper
+import com.swiftapp.utils.StoragePermissionManager
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
@@ -95,6 +96,9 @@ fun MainScreen(
     ),
     themeViewModel: ThemeViewModel = viewModel(),
     languageViewModel: LanguageViewModel = viewModel(),
+    authViewModel: com.swiftapp.ui.viewmodel.AuthViewModel = viewModel(
+        factory = com.swiftapp.ui.viewmodel.AuthViewModel.provideFactory(LocalContext.current)
+    ),
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -119,6 +123,16 @@ fun MainScreen(
     var fileToDelete by remember { mutableStateOf<File?>(null) }
     var fileForDetails by remember { mutableStateOf<PdfFileItem?>(null) }
     var showSortDialog by remember { mutableStateOf(false) }
+
+    var showFirstTimePermissionDialog by remember {
+        mutableStateOf(!hasStoragePermission && !StoragePermissionManager.hasPromptedFirstTime(context))
+    }
+
+    LaunchedEffect(hasStoragePermission) {
+        if (hasStoragePermission) {
+            showFirstTimePermissionDialog = false
+        }
+    }
 
     // Permission Launchers
     val manageStorageLauncher = rememberLauncherForActivityResult(
@@ -836,7 +850,8 @@ fun MainScreen(
                         )
                         NavTab.Settings -> SettingsContent(
                             themeViewModel = themeViewModel,
-                            languageViewModel = languageViewModel
+                            languageViewModel = languageViewModel,
+                            authViewModel = authViewModel
                         )
                     }
                 }
@@ -943,6 +958,22 @@ fun MainScreen(
             },
         )
     }
+
+    if (showFirstTimePermissionDialog) {
+        FirstTimePermissionDialog(
+            languageViewModel = languageViewModel,
+            onAllow = {
+                StoragePermissionManager.setPromptedFirstTime(context, true)
+                showFirstTimePermissionDialog = false
+                requestPermissions()
+            },
+            onDeny = {
+                StoragePermissionManager.setPromptedFirstTime(context, true)
+                showFirstTimePermissionDialog = false
+            }
+        )
+    }
+
     // File Operations Dialogs
     if (fileToRename != null) {
         RenamePdfDialog(
@@ -1128,7 +1159,7 @@ fun HomeDashboardContent(
                                     )
                                 }
                                 Text(
-                                    text = "Swift PDF",
+                                    text = "Swift",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = MaterialTheme.colorScheme.onBackground
@@ -2383,9 +2414,15 @@ fun ToolsGridCard(tool: UtilityToolItem, modifier: Modifier = Modifier) {
 @Composable
 fun SettingsContent(
     themeViewModel: ThemeViewModel,
-    languageViewModel: LanguageViewModel
+    languageViewModel: LanguageViewModel,
+    authViewModel: com.swiftapp.ui.viewmodel.AuthViewModel = viewModel(
+        factory = com.swiftapp.ui.viewmodel.AuthViewModel.provideFactory(LocalContext.current)
+    )
 ) {
     val context = LocalContext.current
+    val activity = context as? android.app.Activity
+    val currentUser by authViewModel.currentUser.collectAsState()
+    val showFallbackPicker by authViewModel.showFallbackAccountPicker.collectAsState()
     val themeMode by themeViewModel.themeMode.collectAsState()
     val currentLanguage by languageViewModel.currentLanguage.collectAsState()
     val isHapticEnabled by com.swiftapp.utils.HapticManager.isHapticEnabledFlow.collectAsState()
@@ -2393,6 +2430,7 @@ fun SettingsContent(
     val namingFormat by com.swiftapp.utils.FileNamingManager.namingFormatFlow.collectAsState()
     val autoTimestamp by com.swiftapp.utils.FileNamingManager.autoTimestampFlow.collectAsState()
     val lockType by com.swiftapp.utils.AppLockManager.lockTypeFlow.collectAsState()
+    val isPrivacyShieldEnabled by com.swiftapp.utils.AppLockManager.isPrivacyShieldEnabledFlow.collectAsState()
     val defaultScanFilter by com.swiftapp.utils.ScannerSettingsManager.defaultFilterFlow.collectAsState()
     val isShutterSoundEnabled by com.swiftapp.utils.ScannerSettingsManager.isShutterSoundEnabledFlow.collectAsState()
     val isAutoEdgeDetectionEnabled by com.swiftapp.utils.ScannerSettingsManager.autoEdgeDetectionFlow.collectAsState()
@@ -2499,6 +2537,18 @@ fun SettingsContent(
         )
     }
 
+    if (showFallbackPicker) {
+        GoogleAccountPickerDialog(
+            accounts = authViewModel.sampleGoogleAccounts,
+            onAccountSelected = { account ->
+                authViewModel.onSelectGoogleAccount(account)
+            },
+            onDismiss = {
+                authViewModel.dismissFallbackAccountPicker()
+            }
+        )
+    }
+
     if (showFileNamingDialog) {
         com.swiftapp.ui.components.FileNamingDialog(
             currentFormat = namingFormat,
@@ -2539,41 +2589,6 @@ fun SettingsContent(
         )
     }
 
-    var stagedThemeMode by remember(themeMode) { mutableStateOf(themeMode) }
-    var stagedNotification by remember(isNotificationEnabled) { mutableStateOf(isNotificationEnabled) }
-    var stagedHaptic by remember(isHapticEnabled) { mutableStateOf(isHapticEnabled) }
-    var stagedShutterSound by remember(isShutterSoundEnabled) { mutableStateOf(isShutterSoundEnabled) }
-    var stagedAutoEdge by remember(isAutoEdgeDetectionEnabled) { mutableStateOf(isAutoEdgeDetectionEnabled) }
-
-    val hasUnsavedChanges = stagedThemeMode != themeMode ||
-            stagedNotification != isNotificationEnabled ||
-            stagedHaptic != isHapticEnabled ||
-            stagedShutterSound != isShutterSoundEnabled ||
-            stagedAutoEdge != isAutoEdgeDetectionEnabled
-
-    fun saveAllSettings() {
-        themeViewModel.setThemeMode(stagedThemeMode)
-        com.swiftapp.utils.NotificationSettingsManager.setNotificationEnabled(context, stagedNotification)
-        com.swiftapp.utils.HapticManager.setHapticEnabled(context, stagedHaptic)
-        com.swiftapp.utils.ScannerSettingsManager.setShutterSoundEnabled(context, stagedShutterSound)
-        com.swiftapp.utils.ScannerSettingsManager.setAutoEdgeDetection(context, stagedAutoEdge)
-        com.swiftapp.utils.HapticManager.success()
-        Toast.makeText(
-            context,
-            languageViewModel.getString("settings_saved_success"),
-            Toast.LENGTH_SHORT
-        ).show()
-    }
-
-    fun discardChanges() {
-        stagedThemeMode = themeMode
-        stagedNotification = isNotificationEnabled
-        stagedHaptic = isHapticEnabled
-        stagedShutterSound = isShutterSoundEnabled
-        stagedAutoEdge = isAutoEdgeDetectionEnabled
-        com.swiftapp.utils.HapticManager.light()
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -2581,7 +2596,7 @@ fun SettingsContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Header with Save Changes action if modified
+        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -2592,84 +2607,23 @@ fun SettingsContent(
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
             )
-
-            if (hasUnsavedChanges) {
-                TactileButton(
-                    onClick = { saveAllSettings() },
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                    modifier = Modifier.height(38.dp)
-                ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(languageViewModel.getString("btn_save"), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
-            }
-        }
-
-        // Unsaved Changes Banner
-        if (hasUnsavedChanges) {
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = languageViewModel.getString("settings_unsaved_banner"),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        TextButton(
-                            onClick = { discardChanges() },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text(languageViewModel.getString("btn_discard"), color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-                        }
-                        Button(
-                            onClick = { saveAllSettings() },
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                            modifier = Modifier.height(32.dp)
-                        ) {
-                            Text(languageViewModel.getString("btn_save"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
         }
 
         // Account Group
         SettingsGroupCard(title = languageViewModel.getString("settings_account")) {
-            SettingsRowItem(
-                icon = Icons.Outlined.Person,
-                label = "User Profile",
-                subtitle = "user@swift.pdf",
-                iconTint = MaterialTheme.colorScheme.primary,
-                iconBgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                onClick = {},
+            AccountProfileCard(
+                user = currentUser,
+                onSignInWithGoogleClick = {
+                    if (activity != null) {
+                        authViewModel.continueWithGoogle(activity)
+                    }
+                },
+                onSignOutClick = {
+                    authViewModel.signOut()
+                },
+                onDeleteAccountClick = { uid ->
+                    authViewModel.deleteAccount(uid)
+                }
             )
         }
 
@@ -2693,10 +2647,10 @@ fun SettingsContent(
                     Text(languageViewModel.getString("settings_theme"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                 }
                 Switch(
-                    checked = stagedThemeMode == ThemeMode.DARK,
+                    checked = themeMode == ThemeMode.DARK,
                     onCheckedChange = { isDark ->
                         com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
-                        stagedThemeMode = if (isDark) ThemeMode.DARK else ThemeMode.LIGHT
+                        themeViewModel.setThemeMode(if (isDark) ThemeMode.DARK else ThemeMode.LIGHT)
                     },
                 )
             }
@@ -2736,10 +2690,10 @@ fun SettingsContent(
                     }
                 }
                 Switch(
-                    checked = stagedNotification,
+                    checked = isNotificationEnabled,
                     onCheckedChange = { isEnabled ->
                         com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
-                        stagedNotification = isEnabled
+                        com.swiftapp.utils.NotificationSettingsManager.setNotificationEnabled(context, isEnabled)
                     },
                 )
             }
@@ -2779,10 +2733,10 @@ fun SettingsContent(
                     }
                 }
                 Switch(
-                    checked = stagedHaptic,
+                    checked = isHapticEnabled,
                     onCheckedChange = { isEnabled ->
+                        com.swiftapp.utils.HapticManager.setHapticEnabled(context, isEnabled)
                         com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
-                        stagedHaptic = isEnabled
                     },
                 )
             }
@@ -2864,10 +2818,10 @@ fun SettingsContent(
                     }
                 }
                 Switch(
-                    checked = stagedShutterSound,
+                    checked = isShutterSoundEnabled,
                     onCheckedChange = { isEnabled ->
                         com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
-                        stagedShutterSound = isEnabled
+                        com.swiftapp.utils.ScannerSettingsManager.setShutterSoundEnabled(context, isEnabled)
                     },
                 )
             }
@@ -2907,10 +2861,10 @@ fun SettingsContent(
                     }
                 }
                 Switch(
-                    checked = stagedAutoEdge,
+                    checked = isAutoEdgeDetectionEnabled,
                     onCheckedChange = { isEnabled ->
                         com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
-                        stagedAutoEdge = isEnabled
+                        com.swiftapp.utils.ScannerSettingsManager.setAutoEdgeDetection(context, isEnabled)
                     },
                 )
             }
@@ -2972,6 +2926,52 @@ fun SettingsContent(
                 onClick = { showAppLockDialog = true },
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF6366F1).copy(alpha = 0.15f),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Outlined.VisibilityOff,
+                                contentDescription = null,
+                                tint = Color(0xFF6366F1),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "Anti-Peep Privacy Shield",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Hides preview in app switcher & blocks captures",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = isPrivacyShieldEnabled,
+                    onCheckedChange = { isEnabled ->
+                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
+                        com.swiftapp.utils.AppLockManager.setPrivacyShieldEnabled(activity, isEnabled)
+                    },
+                )
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
             SettingsRowItem(
                 icon = Icons.Outlined.PrivacyTip,
                 label = languageViewModel.getString("settings_privacy_terms"),
@@ -3004,11 +3004,11 @@ fun SettingsContent(
                         action = Intent.ACTION_SEND
                         putExtra(
                             Intent.EXTRA_TEXT,
-                            "Check out Swift PDF - All-in-one offline PDF tools for Android! Merge, Compress, Scan, E-Sign and Protect PDFs safely: https://github.com/alok706175/Swift"
+                            "Check out Swift - All-in-one offline PDF tools for Android! Merge, Compress, Scan, E-Sign and Protect PDFs safely: https://github.com/alok706175/Swift"
                         )
                         type = "text/plain"
                     }
-                    val shareIntent = Intent.createChooser(sendIntent, "Share Swift PDF")
+                    val shareIntent = Intent.createChooser(sendIntent, "Share Swift")
                     context.startActivity(shareIntent)
                 },
             )
@@ -3030,25 +3030,6 @@ fun SettingsContent(
                 iconBgColor = Color(0xFFEF4444).copy(alpha = 0.15f),
                 onClick = { showBugReportDialog = true },
             )
-        }
-
-        // Dedicated Bottom Save Button
-        if (hasUnsavedChanges) {
-            Spacer(modifier = Modifier.height(4.dp))
-            TactileButton(
-                onClick = { saveAllSettings() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = languageViewModel.getString("btn_save_settings"),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-            }
         }
     }
 }

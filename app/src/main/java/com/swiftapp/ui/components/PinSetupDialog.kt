@@ -1,5 +1,6 @@
 package com.swiftapp.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -280,28 +281,43 @@ fun PinSetupDialog(
 
                 // PIN Dots Indicator (4 or 6 dots)
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(vertical = 8.dp)
                 ) {
                     for (i in 0 until activeDotCount) {
                         val isFilled = i < currentPin.length
-                        val dotColor = if (errorMessage != null) {
-                            MaterialTheme.colorScheme.error
-                        } else if (isFilled) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant
-                        }
+                        val scale by animateFloatAsState(
+                            targetValue = if (isFilled) 1.25f else 1.0f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            ),
+                            label = "PinDotScale_$i"
+                        )
+
+                        val dotColor by animateColorAsState(
+                            targetValue = when {
+                                errorMessage != null -> MaterialTheme.colorScheme.error
+                                isFilled -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                            },
+                            animationSpec = tween(150),
+                            label = "PinDotColor_$i"
+                        )
 
                         Box(
                             modifier = Modifier
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
                                 .size(16.dp)
                                 .clip(CircleShape)
                                 .background(dotColor)
                                 .border(
-                                    width = 1.5.dp,
-                                    color = if (isFilled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                    width = if (isFilled) 0.dp else 1.5.dp,
+                                    color = if (isFilled) Color.Transparent else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
                                     shape = CircleShape
                                 )
                         )
@@ -323,99 +339,6 @@ fun PinSetupDialog(
                     onDigitClick = { handleDigit(it) },
                     onBackspaceClick = { handleBackspace() }
                 )
-            }
-        }
-    }
-}
-
-@Composable
-fun NumericKeypad(
-    onDigitClick: (String) -> Unit,
-    onBackspaceClick: () -> Unit,
-    onBiometricClick: (() -> Unit)? = null
-) {
-    val digits = listOf(
-        listOf("1", "2", "3"),
-        listOf("4", "5", "6"),
-        listOf("7", "8", "9"),
-        listOf("bio", "0", "back")
-    )
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        for (row in digits) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                for (key in row) {
-                    when (key) {
-                        "back" -> {
-                            Surface(
-                                modifier = Modifier
-                                    .size(62.dp)
-                                    .clip(CircleShape)
-                                    .bounceClick { onBackspaceClick() },
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                shape = CircleShape
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Backspace,
-                                        contentDescription = "Backspace",
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                            }
-                        }
-                        "bio" -> {
-                            if (onBiometricClick != null) {
-                                Surface(
-                                    modifier = Modifier
-                                        .size(62.dp)
-                                        .clip(CircleShape)
-                                        .bounceClick { onBiometricClick() },
-                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                                    shape = CircleShape
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Fingerprint,
-                                            contentDescription = "Biometric",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    }
-                                }
-                            } else {
-                                Spacer(modifier = Modifier.size(62.dp))
-                            }
-                        }
-                        else -> {
-                            Surface(
-                                modifier = Modifier
-                                    .size(62.dp)
-                                    .clip(CircleShape)
-                                    .bounceClick { onDigitClick(key) },
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                                shape = CircleShape
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = key,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }

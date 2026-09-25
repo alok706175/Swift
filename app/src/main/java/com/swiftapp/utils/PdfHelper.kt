@@ -122,6 +122,17 @@ object PdfHelper {
     private var lastScanTimeMs: Long = 0L
     private const val CACHE_EXPIRY_MS = 10_000L // 10 seconds cache unless force refreshed
 
+    fun invalidateCache() {
+        cachedFiles = null
+        lastScanTimeMs = 0L
+    }
+
+    fun removeFileFromCache(file: File) {
+        val absPath = file.absolutePath
+        val canPath = try { file.canonicalPath } catch (_: Exception) { absPath }
+        cachedFiles = cachedFiles?.filter { it.path != absPath && it.path != canPath }
+    }
+
     /**
      * High-speed storage scanner combining MediaStore queries and targeted directory discovery.
      */
@@ -280,6 +291,7 @@ object PdfHelper {
 
             val success = file.renameTo(targetFile)
             if (success) {
+                invalidateCache()
                 Result.success(targetFile)
             } else {
                 Result.failure(Exception("Unable to rename file."))
@@ -294,7 +306,10 @@ object PdfHelper {
      */
     suspend fun deletePdf(context: Context, file: File): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
-            if (!file.exists()) return@withContext Result.success(true)
+            if (!file.exists()) {
+                removeFileFromCache(file)
+                return@withContext Result.success(true)
+            }
 
             // Try MediaStore delete first
             try {
@@ -308,6 +323,7 @@ object PdfHelper {
 
             val deleted = file.delete()
             if (deleted || !file.exists()) {
+                removeFileFromCache(file)
                 Result.success(true)
             } else {
                 Result.failure(Exception("Could not delete file from device."))
@@ -332,7 +348,6 @@ object PdfHelper {
 
     fun formatRelativeDate(timestampSec: Long): String {
         val millis = timestampSec * 1000
-        val now = System.currentTimeMillis()
         val calFile = Calendar.getInstance().apply { timeInMillis = millis }
         val calNow = Calendar.getInstance()
 

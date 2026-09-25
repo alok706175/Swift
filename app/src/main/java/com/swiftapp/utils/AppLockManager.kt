@@ -3,9 +3,11 @@ package com.swiftapp.utils
 import android.app.Activity
 import android.app.KeyguardManager
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.SystemClock
+import android.provider.Settings
 import android.view.WindowManager
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -220,6 +222,44 @@ object AppLockManager {
 
     fun isBiometricHardwareAvailable(context: Context): Boolean {
         return getBiometricStatus(context) == BiometricStatus.AVAILABLE
+    }
+
+    fun openBiometricEnrollment(context: Context) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val enrollIntent = Intent(Settings.ACTION_BIOMETRIC_ENROLL).apply {
+                    putExtra(
+                        Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+                        BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK
+                    )
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(enrollIntent)
+                return
+            }
+        } catch (_: Exception) {}
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val enrollIntent = Intent(Settings.ACTION_FINGERPRINT_ENROLL).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(enrollIntent)
+                return
+            }
+        } catch (_: Exception) {}
+
+        try {
+            val securityIntent = Intent(Settings.ACTION_SECURITY_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(securityIntent)
+        } catch (_: Exception) {
+            val settingsIntent = Intent(Settings.ACTION_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(settingsIntent)
+        }
     }
 
     fun setLockType(context: Context, type: AppLockType) {

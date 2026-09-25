@@ -24,8 +24,21 @@ enum class StoragePermissionState {
  */
 object StoragePermissionManager {
 
+    private const val PREFS_NAME = "swift_storage_prefs"
+    private const val KEY_PROMPTED_FIRST_TIME = "has_prompted_first_time"
+
     private val _permissionStateFlow = MutableStateFlow(StoragePermissionState.DENIED)
     val permissionStateFlow: StateFlow<StoragePermissionState> = _permissionStateFlow.asStateFlow()
+
+    fun hasPromptedFirstTime(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_PROMPTED_FIRST_TIME, false)
+    }
+
+    fun setPromptedFirstTime(context: Context, prompted: Boolean = true) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_PROMPTED_FIRST_TIME, prompted).apply()
+    }
 
     fun checkPermission(context: Context): StoragePermissionState {
         val state = when {

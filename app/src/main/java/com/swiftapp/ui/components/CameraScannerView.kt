@@ -552,7 +552,6 @@ private fun ScannerGuideOverlay(
                 val bookHeight = bookWidth * 0.72f
                 val left = (canvasWidth - bookWidth) / 2f
                 val top = (canvasHeight - bookHeight) / 2f - 30.dp.toPx()
-                val right = left + bookWidth
                 val bottom = top + bookHeight
                 val centerX = left + bookWidth / 2f
 

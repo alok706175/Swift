@@ -20,17 +20,17 @@ object UnlockPdfService {
     /**
      * Inspects a PDF document to determine its exact encryption status and metadata.
      */
-    suspend fun inspectPdfFile(context: Context, file: File, uri: Uri? = null): UnlockPdfItem = withContext(Dispatchers.IO) {
-        var status = EncryptionStatus.NOT_ENCRYPTED
+    suspend fun inspectPdfFile(@Suppress("UNUSED_PARAMETER") context: Context, file: File, @Suppress("UNUSED_PARAMETER") uri: Uri? = null): UnlockPdfItem = withContext(Dispatchers.IO) {
+        var status: EncryptionStatus
         var pageCount = 0
 
         try {
             PDDocument.load(file).use { doc ->
-                if (doc.isEncrypted) {
+                status = if (doc.isEncrypted) {
                     // Document is encrypted with owner restrictions only (opens with blank password)
-                    status = EncryptionStatus.RESTRICTIONS_ONLY
+                    EncryptionStatus.RESTRICTIONS_ONLY
                 } else {
-                    status = EncryptionStatus.NOT_ENCRYPTED
+                    EncryptionStatus.NOT_ENCRYPTED
                 }
                 pageCount = doc.numberOfPages
             }

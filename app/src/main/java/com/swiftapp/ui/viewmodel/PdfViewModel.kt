@@ -119,9 +119,9 @@ class PdfViewModel(
         _hasStoragePermission.value = granted
     }
 
-    fun loadAllFiles(context: Context, forceRefresh: Boolean = false) {
+    fun loadAllFiles(context: Context, forceRefresh: Boolean = false, showScanningIndicator: Boolean = true) {
         viewModelScope.launch {
-            if (forceRefresh || _allFiles.value.isEmpty()) {
+            if (showScanningIndicator && (forceRefresh || _allFiles.value.isEmpty())) {
                 _isScanning.value = true
             }
             checkStoragePermissions(context)
@@ -173,7 +173,7 @@ class PdfViewModel(
         viewModelScope.launch {
             val result = PdfHelper.renamePdf(file, newName)
             result.onSuccess { renamedFile ->
-                loadAllFiles(context)
+                loadAllFiles(context, forceRefresh = true, showScanningIndicator = false)
                 addToRecent(context, renamedFile)
             }
             onResult(result)
@@ -181,10 +181,32 @@ class PdfViewModel(
     }
 
     fun deleteFile(context: Context, file: File, onResult: (Result<Boolean>) -> Unit) {
+        val targetPath = file.absolutePath
+        val canonicalPath = try { file.canonicalPath } catch (_: Exception) { targetPath }
+
+        // 1. Instantly update in-memory state so UI PDF count and list update with 0ms delay
+        _allFiles.value = _allFiles.value.filter { it.path != targetPath && it.path != canonicalPath }
+        _recentlyOpened.value = _recentlyOpened.value.filter { it.path != targetPath && it.path != canonicalPath }
+        _searchResults.value = _searchResults.value.filter { it.path != targetPath && it.path != canonicalPath }
+
+        // 2. Remove immediately from recent preferences
+        try {
+            val prefs = context.getSharedPreferences("recent_files", Context.MODE_PRIVATE)
+            val currentPaths = prefs.getStringSet("paths", emptySet())?.toMutableSet() ?: mutableSetOf()
+            if (currentPaths.remove(targetPath) || currentPaths.remove(canonicalPath)) {
+                prefs.edit { putStringSet("paths", currentPaths) }
+            }
+        } catch (_: Exception) {}
+
+        // 3. Perform asynchronous file deletion and background sync
         viewModelScope.launch {
             val result = PdfHelper.deletePdf(context, file)
-            result.onSuccess {
-                loadAllFiles(context)
+            if (result.isSuccess) {
+                // Background silent sync to ensure exact filesystem parity without showing "Scanning..." flicker
+                loadAllFiles(context, forceRefresh = true, showScanningIndicator = false)
+            } else {
+                // In the rare case deletion failed on disk, rescan to restore accurate list
+                loadAllFiles(context, forceRefresh = true, showScanningIndicator = false)
             }
             onResult(result)
         }

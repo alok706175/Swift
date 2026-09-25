@@ -94,7 +94,7 @@ fun PrivacyPolicyDialog(
                 ) {
                     PrivacySectionCard(
                         title = "1. 100% Offline & Private Processing",
-                        body = "Swift PDF is designed with an offline-first architecture. All PDF operations—including Merge, Compress, Camera Scanning, Page Deletion, E-Sign, and Password Encryption—are performed strictly on your local device. No documents or extracted contents are ever uploaded to any cloud server."
+                        body = "Swift is designed with an offline-first architecture. All PDF operations—including Merge, Compress, Camera Scanning, Page Deletion, E-Sign, and Password Encryption—are performed strictly on your local device. No documents or extracted contents are ever uploaded to any cloud server."
                     )
 
                     PrivacySectionCard(
@@ -109,7 +109,7 @@ fun PrivacyPolicyDialog(
 
                     PrivacySectionCard(
                         title = "4. Terms of Service",
-                        body = "Swift PDF is provided 'as is' for your convenience. Users are responsible for maintaining backups of their sensitive files. You retain full copyright and ownership of all PDF documents processed using this tool."
+                        body = "Swift is provided 'as is' for your convenience. Users are responsible for maintaining backups of their sensitive files. You retain full copyright and ownership of all PDF documents processed using this tool."
                     )
                 }
 
