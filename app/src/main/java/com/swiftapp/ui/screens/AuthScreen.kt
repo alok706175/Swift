@@ -265,20 +265,6 @@ fun AuthScreen(
                             .animateContentSize(animationSpec = tween(250)),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // Form Header Title
-                        Text(
-                            text = if (selectedTab == 0) "Sign In" else "Create Account",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 22.sp,
-                                letterSpacing = 0.3.sp
-                            ),
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                        )
 
                         // Name field (if Sign Up)
                         if (selectedTab == 1) {

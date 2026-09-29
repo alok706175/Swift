@@ -2613,6 +2613,9 @@ fun SettingsContent(
         SettingsGroupCard(title = languageViewModel.getString("settings_account")) {
             AccountProfileCard(
                 user = currentUser,
+                onSignInWithSwiftClick = {
+                    authViewModel.signOut()
+                },
                 onSignInWithGoogleClick = {
                     if (activity != null) {
                         authViewModel.continueWithGoogle(activity)

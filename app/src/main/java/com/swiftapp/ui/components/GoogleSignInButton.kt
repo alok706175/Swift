@@ -130,3 +130,67 @@ fun GoogleSignInButton(
         }
     }
 }
+
+/**
+ * Branded "Continue with Swift" button.
+ */
+@Composable
+fun SwiftSignInButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    text: String = "Continue with Swift",
+    isLoading: Boolean = false,
+    enabled: Boolean = true,
+    height: Dp = 52.dp,
+    shape: RoundedCornerShape = RoundedCornerShape(14.dp)
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .shadow(elevation = 2.dp, shape = shape, spotColor = Color(0xFFFF5E38).copy(alpha = 0.3f))
+            .clip(shape)
+            .clickable(
+                enabled = enabled && !isLoading,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = rememberRipple(bounded = true, color = Color.White.copy(alpha = 0.3f)),
+                onClick = {
+                    HapticManager.performHaptic()
+                    onClick()
+                }
+            ),
+        shape = shape,
+        color = Color(0xFFFF5E38)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.5.dp,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Connecting...",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            } else {
+                Text(
+                    text = text,
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.2.sp
+                )
+            }
+        }
+    }
+}

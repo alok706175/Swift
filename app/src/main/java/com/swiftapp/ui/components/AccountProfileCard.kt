@@ -61,6 +61,7 @@ import com.swiftapp.utils.HapticManager
 @Composable
 fun AccountProfileCard(
     user: UserProfile?,
+    onSignInWithSwiftClick: () -> Unit = {},
     onSignInWithGoogleClick: () -> Unit,
     onSignOutClick: () -> Unit,
     onDeleteAccountClick: (String) -> Unit,
@@ -369,6 +370,13 @@ fun AccountProfileCard(
                         )
                     }
                 }
+
+                SwiftSignInButton(
+                    text = "Continue with Swift",
+                    onClick = onSignInWithSwiftClick,
+                    height = 46.dp,
+                    shape = RoundedCornerShape(12.dp)
+                )
 
                 GoogleSignInButton(
                     text = "Continue with Google",
