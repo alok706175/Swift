@@ -407,74 +407,63 @@ fun ContactDeveloperDialog(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // Action Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                // Action Button
+                Button(
+                    onClick = {
+                        if (!validate()) {
+                            HapticManager.error()
+                            if (nameError) {
+                                Toast.makeText(context, "Name: This is compulsory", Toast.LENGTH_SHORT).show()
+                            } else if (emailError != null) {
+                                Toast.makeText(context, if (emailError == "This is compulsory") "Email ID: This is compulsory" else emailError!!, Toast.LENGTH_SHORT).show()
+                            } else if (messageError) {
+                                Toast.makeText(context, "Message: This is compulsory", Toast.LENGTH_SHORT).show()
+                            }
+                            return@Button
+                        }
+
+                        HapticManager.performHaptic()
+                        val subject = "[Swift] ${selectedTopic.subjectPrefix}: ${selectedTopic.label} (v$versionName)"
+                        val emailBody = buildString {
+                            append("Name: ${userName.trim()}\n")
+                            append("Email: ${userEmail.trim()}\n")
+                            append("Topic: ${selectedTopic.label}\n\n")
+                            append("Message:\n")
+                            append(userMessage.trim())
+                            append("\n\n------------------------------\n")
+                            append("App Version: Swift v$versionName\n")
+                            append("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n")
+                            append("OS: Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})\n")
+                            append("------------------------------")
+                        }
+
+                        val intent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("mailto:")
+                            putExtra(Intent.EXTRA_EMAIL, arrayOf(recipientEmail))
+                            putExtra(Intent.EXTRA_SUBJECT, subject)
+                            putExtra(Intent.EXTRA_TEXT, emailBody)
+                        }
+
+                        try {
+                            context.startActivity(Intent.createChooser(intent, "Send Feedback"))
+                            handleDismiss()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = { handleDismiss() },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(languageViewModel.getString("btn_cancel"))
-                    }
-
-                    Button(
-                        onClick = {
-                            if (!validate()) {
-                                HapticManager.error()
-                                if (nameError) {
-                                    Toast.makeText(context, "Name: This is compulsory", Toast.LENGTH_SHORT).show()
-                                } else if (emailError != null) {
-                                    Toast.makeText(context, if (emailError == "This is compulsory") "Email ID: This is compulsory" else emailError!!, Toast.LENGTH_SHORT).show()
-                                } else if (messageError) {
-                                    Toast.makeText(context, "Message: This is compulsory", Toast.LENGTH_SHORT).show()
-                                }
-                                return@Button
-                            }
-
-                            HapticManager.performHaptic()
-                            val subject = "[Swift] ${selectedTopic.subjectPrefix}: ${selectedTopic.label} (v$versionName)"
-                            val emailBody = buildString {
-                                append("Name: ${userName.trim()}\n")
-                                append("Email: ${userEmail.trim()}\n")
-                                append("Topic: ${selectedTopic.label}\n\n")
-                                append("Message:\n")
-                                append(userMessage.trim())
-                                append("\n\n------------------------------\n")
-                                append("App Version: Swift v$versionName\n")
-                                append("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}\n")
-                                append("OS: Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})\n")
-                                append("------------------------------")
-                            }
-
-                            val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                data = Uri.parse("mailto:")
-                                putExtra(Intent.EXTRA_EMAIL, arrayOf(recipientEmail))
-                                putExtra(Intent.EXTRA_SUBJECT, subject)
-                                putExtra(Intent.EXTRA_TEXT, emailBody)
-                            }
-
-                            try {
-                                context.startActivity(Intent.createChooser(intent, "Send Feedback"))
-                                handleDismiss()
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        modifier = Modifier.weight(1.5f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "Send Message", fontWeight = FontWeight.SemiBold)
-                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Send Message", fontWeight = FontWeight.Bold)
                 }
             }
         }

@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -266,23 +267,23 @@ fun AppLockScreen(
                     }
                 }
 
-                // App Icon / Shield Badge with subtle glow
+                // App Icon / Original Swift Logo with subtle elevation & brand glow
                 Box(
                     modifier = Modifier
                         .size(76.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
-                        .border(
-                            width = 1.5.dp,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                            shape = RoundedCornerShape(24.dp)
-                        ),
-                    contentAlignment = Alignment.Center
+                        .shadow(
+                            elevation = 14.dp,
+                            shape = RoundedCornerShape(22.dp),
+                            spotColor = Color(0xFFFF5E38).copy(alpha = 0.35f),
+                            ambientColor = Color(0xFFFF5E38).copy(alpha = 0.15f)
+                        )
+                        .clip(RoundedCornerShape(22.dp))
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.ic_swift_logo),
-                        contentDescription = "Swift PDF Logo",
-                        modifier = Modifier.size(46.dp)
+                        painter = painterResource(id = R.drawable.swift_icon_clean),
+                        contentDescription = "Swift Logo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
                 }
 
@@ -299,18 +300,6 @@ fun AppLockScreen(
                         fontWeight = FontWeight.Bold
                     ),
                     color = MaterialTheme.colorScheme.onBackground
-                )
-
-                Text(
-                    text = when (lockType) {
-                        AppLockType.PATTERN -> "Draw your saved pattern to continue"
-                        AppLockType.DEVICE_CREDENTIAL -> "Authenticate with your device screen lock"
-                        AppLockType.BIOMETRIC_OR_PIN -> "Touch fingerprint sensor or enter PIN"
-                        else -> "Enter your security PIN to unlock Swift PDF"
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
                 )
             }
 

@@ -36,14 +36,14 @@ fun PrivacyPolicyScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Privacy Policy",
+                        text = "Privacy Policy & Terms",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        HapticManager.performHaptic()
+                        HapticManager.light()
                         onBack()
                     }) {
                         Icon(

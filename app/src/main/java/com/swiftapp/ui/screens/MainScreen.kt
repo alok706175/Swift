@@ -190,6 +190,9 @@ fun MainScreen(
     var splitPdfFile by remember { mutableStateOf<File?>(null) }
     var isDeletePagesScreenOpen by remember { mutableStateOf(false) }
     var deletePagesPdfFile by remember { mutableStateOf<File?>(null) }
+    var isLanguageScreenOpen by remember { mutableStateOf(false) }
+    var isPrivacyPolicyScreenOpen by remember { mutableStateOf(false) }
+    var isAboutScreenOpen by remember { mutableStateOf(false) }
 
     if (readerFile != null) {
         BackHandler { readerFile = null }
@@ -419,6 +422,35 @@ fun MainScreen(
                 deletePagesPdfFile = null
                 readerFile = file
             },
+        )
+        return
+    }
+
+    if (isLanguageScreenOpen) {
+        BackHandler { isLanguageScreenOpen = false }
+        LanguageSelectionScreen(
+            currentLanguage = currentLanguage,
+            onLanguageSelected = { newLang ->
+                languageViewModel.setLanguage(newLang)
+            },
+            onNavigateBack = { isLanguageScreenOpen = false }
+        )
+        return
+    }
+
+    if (isPrivacyPolicyScreenOpen) {
+        BackHandler { isPrivacyPolicyScreenOpen = false }
+        PrivacyPolicyScreen(
+            onBack = { isPrivacyPolicyScreenOpen = false }
+        )
+        return
+    }
+
+    if (isAboutScreenOpen) {
+        BackHandler { isAboutScreenOpen = false }
+        AboutAppScreen(
+            languageViewModel = languageViewModel,
+            onBack = { isAboutScreenOpen = false }
         )
         return
     }
@@ -849,7 +881,10 @@ fun MainScreen(
                         NavTab.Settings -> SettingsContent(
                             themeViewModel = themeViewModel,
                             languageViewModel = languageViewModel,
-                            authViewModel = authViewModel
+                            authViewModel = authViewModel,
+                            onOpenLanguageScreen = { isLanguageScreenOpen = true },
+                            onOpenPrivacyScreen = { isPrivacyPolicyScreenOpen = true },
+                            onOpenAboutScreen = { isAboutScreenOpen = true }
                         )
                     }
                 }
@@ -2403,7 +2438,10 @@ fun SettingsContent(
     languageViewModel: LanguageViewModel,
     authViewModel: com.swiftapp.ui.viewmodel.AuthViewModel = viewModel(
         factory = com.swiftapp.ui.viewmodel.AuthViewModel.provideFactory(LocalContext.current)
-    )
+    ),
+    onOpenLanguageScreen: () -> Unit = {},
+    onOpenPrivacyScreen: () -> Unit = {},
+    onOpenAboutScreen: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val activity = context as? android.app.Activity
@@ -2420,7 +2458,6 @@ fun SettingsContent(
     val defaultScanFilter by com.swiftapp.utils.ScannerSettingsManager.defaultFilterFlow.collectAsState()
     val isShutterSoundEnabled by com.swiftapp.utils.ScannerSettingsManager.isShutterSoundEnabledFlow.collectAsState()
     val isAutoEdgeDetectionEnabled by com.swiftapp.utils.ScannerSettingsManager.autoEdgeDetectionFlow.collectAsState()
-    val storagePermState by com.swiftapp.utils.StoragePermissionManager.permissionStateFlow.collectAsState()
 
     val packageInfo = remember {
         try {
@@ -2437,33 +2474,14 @@ fun SettingsContent(
         packageInfo?.versionCode?.toLong() ?: 102L
     }
 
-    var showLanguageDialog by remember { mutableStateOf(false) }
+
     var showSaveLocationDialog by remember { mutableStateOf(false) }
     var showFileNamingDialog by remember { mutableStateOf(false) }
     var showAppLockDialog by remember { mutableStateOf(false) }
     var showPinSetupDialog by remember { mutableStateOf(false) }
     var showScanFilterDialog by remember { mutableStateOf(false) }
-    var showStoragePermissionDialog by remember { mutableStateOf(false) }
-    var showAboutDialog by remember { mutableStateOf(false) }
-    var showPrivacyDialog by remember { mutableStateOf(false) }
     var showContactDevDialog by remember { mutableStateOf(false) }
     var showBugReportDialog by remember { mutableStateOf(false) }
-
-    if (showAboutDialog) {
-        com.swiftapp.ui.components.AboutAppDialog(
-            versionName = versionName,
-            versionCode = versionCode,
-            languageViewModel = languageViewModel,
-            onDismiss = { showAboutDialog = false }
-        )
-    }
-
-    if (showPrivacyDialog) {
-        com.swiftapp.ui.components.PrivacyPolicyDialog(
-            languageViewModel = languageViewModel,
-            onDismiss = { showPrivacyDialog = false }
-        )
-    }
 
     if (showContactDevDialog) {
         com.swiftapp.ui.components.ContactDeveloperDialog(
@@ -2482,14 +2500,6 @@ fun SettingsContent(
         )
     }
 
-    if (showStoragePermissionDialog) {
-        com.swiftapp.ui.components.StoragePermissionDialog(
-            permissionState = storagePermState,
-            languageViewModel = languageViewModel,
-            onDismiss = { showStoragePermissionDialog = false }
-        )
-    }
-
     if (showScanFilterDialog) {
         com.swiftapp.ui.components.ScanFilterSelectionDialog(
             currentFilter = defaultScanFilter,
@@ -2498,16 +2508,6 @@ fun SettingsContent(
                 showScanFilterDialog = false
             },
             onDismiss = { showScanFilterDialog = false }
-        )
-    }
-
-    if (showLanguageDialog) {
-        LanguageSelectionDialog(
-            currentLanguage = currentLanguage,
-            onLanguageSelected = { newLang ->
-                languageViewModel.setLanguage(newLang)
-            },
-            onDismiss = { showLanguageDialog = false }
         )
     }
 
@@ -2659,7 +2659,15 @@ fun SettingsContent(
 
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable {
+                        val isEnabled = !isHapticEnabled
+                        com.swiftapp.utils.HapticManager.setHapticEnabled(context, isEnabled)
+                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
+                    }
+                    .padding(vertical = 4.dp, horizontal = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -2718,7 +2726,7 @@ fun SettingsContent(
                 subtitle = "${currentLanguage.nativeName} (${currentLanguage.englishName})",
                 iconTint = Color(0xFF10B981),
                 iconBgColor = Color(0xFF10B981).copy(alpha = 0.15f),
-                onClick = { showLanguageDialog = true },
+                onClick = onOpenLanguageScreen,
             )
         }
 
@@ -2830,24 +2838,6 @@ fun SettingsContent(
 
         // Storage Group
         SettingsGroupCard(title = languageViewModel.getString("settings_storage")) {
-            val storagePermSubtitle = when (storagePermState) {
-                com.swiftapp.utils.StoragePermissionState.GRANTED -> languageViewModel.getString("perm_status_granted")
-                com.swiftapp.utils.StoragePermissionState.LIMITED -> languageViewModel.getString("perm_status_limited")
-                com.swiftapp.utils.StoragePermissionState.DENIED -> languageViewModel.getString("perm_status_action_required")
-            }
-            val isPermGranted = storagePermState == com.swiftapp.utils.StoragePermissionState.GRANTED
-
-            SettingsRowItem(
-                icon = if (isPermGranted) Icons.Outlined.CheckCircle else Icons.Outlined.FolderShared,
-                label = languageViewModel.getString("settings_storage_permission"),
-                subtitle = storagePermSubtitle,
-                iconTint = if (isPermGranted) Color(0xFF10B981) else MaterialTheme.colorScheme.error,
-                iconBgColor = (if (isPermGranted) Color(0xFF10B981) else MaterialTheme.colorScheme.error).copy(alpha = 0.15f),
-                onClick = { showStoragePermissionDialog = true },
-            )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
-
             val saveLocSubtitle = when (currentSaveLoc) {
                 com.swiftapp.utils.SaveLocation.SWIFT_FOLDER -> "${languageViewModel.getString("save_loc_swift")} (/Documents/SwiftPDF)"
                 com.swiftapp.utils.SaveLocation.DOWNLOADS -> "${languageViewModel.getString("save_loc_downloads")} (/Download)"
@@ -2885,7 +2875,15 @@ fun SettingsContent(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable {
+                        val isEnabled = !isPrivacyShieldEnabled
+                        com.swiftapp.utils.AppLockManager.setPrivacyShieldEnabled(activity, isEnabled)
+                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
+                    }
+                    .padding(vertical = 4.dp, horizontal = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -2924,8 +2922,8 @@ fun SettingsContent(
                 Switch(
                     checked = isPrivacyShieldEnabled,
                     onCheckedChange = { isEnabled ->
-                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
                         com.swiftapp.utils.AppLockManager.setPrivacyShieldEnabled(activity, isEnabled)
+                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
                     },
                 )
             }
@@ -2936,7 +2934,7 @@ fun SettingsContent(
                 subtitle = languageViewModel.getString("settings_privacy_terms_sub"),
                 iconTint = Color(0xFF10B981),
                 iconBgColor = Color(0xFF10B981).copy(alpha = 0.15f),
-                onClick = { showPrivacyDialog = true },
+                onClick = onOpenPrivacyScreen,
             )
         }
 
@@ -2948,7 +2946,7 @@ fun SettingsContent(
                 subtitle = "Swift v$versionName (Build $versionCode)",
                 iconTint = MaterialTheme.colorScheme.primary,
                 iconBgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                onClick = { showAboutDialog = true },
+                onClick = onOpenAboutScreen,
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
             SettingsRowItem(

@@ -332,20 +332,8 @@ fun BugReportDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Action Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(languageViewModel.getString("btn_cancel"))
-                    }
-
-                    Button(
+                // Action Button
+                Button(
                         onClick = {
                             if (issueTitle.isBlank() && bugDescription.isBlank()) {
                                 Toast.makeText(context, "Please enter an issue title or description", Toast.LENGTH_SHORT).show()
@@ -406,22 +394,23 @@ fun BugReportDialog(
                                 }
                             }
                         },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        modifier = Modifier.weight(1.5f)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (attachments.isEmpty()) "Submit Report" else "Submit (${attachments.size})",
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                }
             }
         }
     }
