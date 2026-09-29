@@ -66,6 +66,7 @@ import com.swiftapp.utils.AppLanguage
 import com.swiftapp.utils.PdfFileItem
 import com.swiftapp.utils.PdfHelper
 import com.swiftapp.utils.StoragePermissionManager
+import com.swiftapp.utils.StoragePermissionState
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
@@ -124,21 +125,18 @@ fun MainScreen(
     var fileForDetails by remember { mutableStateOf<PdfFileItem?>(null) }
     var showSortDialog by remember { mutableStateOf(false) }
 
-    var showFirstTimePermissionDialog by remember {
-        mutableStateOf(!hasStoragePermission && !StoragePermissionManager.hasPromptedFirstTime(context))
-    }
-
-    LaunchedEffect(hasStoragePermission) {
-        if (hasStoragePermission) {
-            showFirstTimePermissionDialog = false
-        }
-    }
-
     // Permission Launchers
     val manageStorageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
+        viewModel.checkStoragePermissions(context)
         viewModel.loadAllFiles(context, forceRefresh = true)
+    }
+
+    // Observe StoragePermissionManager global state — DENIED nahi hai toh banner turant hatao
+    val globalPermissionState by StoragePermissionManager.permissionStateFlow.collectAsState()
+    LaunchedEffect(globalPermissionState) {
+        viewModel.setStoragePermission(globalPermissionState != StoragePermissionState.DENIED)
     }
 
     val requestStoragePermissionLauncher = rememberLauncherForActivityResult(
@@ -959,21 +957,6 @@ fun MainScreen(
         )
     }
 
-    if (showFirstTimePermissionDialog) {
-        FirstTimePermissionDialog(
-            languageViewModel = languageViewModel,
-            onAllow = {
-                StoragePermissionManager.setPromptedFirstTime(context, true)
-                showFirstTimePermissionDialog = false
-                requestPermissions()
-            },
-            onDeny = {
-                StoragePermissionManager.setPromptedFirstTime(context, true)
-                showFirstTimePermissionDialog = false
-            }
-        )
-    }
-
     // File Operations Dialogs
     if (fileToRename != null) {
         RenamePdfDialog(
@@ -1184,7 +1167,10 @@ fun HomeDashboardContent(
             }
 
             // 2. Permission Banner (if not granted)
-            if (!hasStoragePermission) {
+            // Banner sirf tab dikhe: permission denied ho AND pehle popup show ho chuka ho
+            // (agar pehli baar popup abhi dikhna hai, banner peeche nahi dikhna chahiye)
+            val hasBeenPrompted = StoragePermissionManager.hasPromptedFirstTime(context)
+            if (!hasStoragePermission && hasBeenPrompted) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -2434,7 +2420,6 @@ fun SettingsContent(
     val defaultScanFilter by com.swiftapp.utils.ScannerSettingsManager.defaultFilterFlow.collectAsState()
     val isShutterSoundEnabled by com.swiftapp.utils.ScannerSettingsManager.isShutterSoundEnabledFlow.collectAsState()
     val isAutoEdgeDetectionEnabled by com.swiftapp.utils.ScannerSettingsManager.autoEdgeDetectionFlow.collectAsState()
-    val isNotificationEnabled by com.swiftapp.utils.NotificationSettingsManager.isNotificationEnabledFlow.collectAsState()
     val storagePermState by com.swiftapp.utils.StoragePermissionManager.permissionStateFlow.collectAsState()
 
     val packageInfo = remember {
@@ -2633,11 +2618,23 @@ fun SettingsContent(
         // App Settings Group
         SettingsGroupCard(title = languageViewModel.getString("settings_app")) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable {
+                        val isDark = themeMode != ThemeMode.DARK
+                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
+                        themeViewModel.setThemeMode(if (isDark) ThemeMode.DARK else ThemeMode.LIGHT)
+                    }
+                    .padding(vertical = 4.dp, horizontal = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = Color(0xFF6366F1).copy(alpha = 0.15f),
@@ -2660,48 +2657,6 @@ fun SettingsContent(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color(0xFFF59E0B).copy(alpha = 0.15f),
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(20.dp))
-                        }
-                    }
-                    Column {
-                        Text(
-                            text = languageViewModel.getString("settings_notification"),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = languageViewModel.getString("settings_notification_sub"),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Switch(
-                    checked = isNotificationEnabled,
-                    onCheckedChange = { isEnabled ->
-                        com.swiftapp.utils.HapticManager.performHaptic(strength = com.swiftapp.utils.HapticFeedbackStrength.LIGHT)
-                        com.swiftapp.utils.NotificationSettingsManager.setNotificationEnabled(context, isEnabled)
-                    },
-                )
-            }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

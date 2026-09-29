@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.swiftapp.ui.components.FirstTimePermissionDialog
+import com.swiftapp.ui.components.NotificationPermissionDialog
+import com.swiftapp.utils.NotificationSettingsManager
 import com.swiftapp.ui.screens.AnimatedSplashScreen
 import com.swiftapp.ui.screens.AppLockScreen
 import com.swiftapp.ui.screens.AuthScreen
@@ -82,8 +84,14 @@ class MainActivity : FragmentActivity() {
             var showFirstTimePermissionDialog by remember {
                 mutableStateOf(
                     permissionState != StoragePermissionState.GRANTED &&
-                    !StoragePermissionManager.hasPromptedFirstTime(this@MainActivity)
+                    !StoragePermissionManager.hasPromptedFirstTime(this@MainActivity) &&
+                    // Notification pehle dikhao — storage dialog sirf tab initially true ho
+                    // jab notification already prompted ho chuka ho
+                    NotificationSettingsManager.hasPromptedFirstTime(this@MainActivity)
                 )
+            }
+            var showNotificationPermissionDialog by remember {
+                mutableStateOf(!NotificationSettingsManager.hasPromptedFirstTime(this@MainActivity))
             }
 
             LaunchedEffect(permissionState) {
@@ -102,6 +110,27 @@ class MainActivity : FragmentActivity() {
                 contract = ActivityResultContracts.StartActivityForResult()
             ) {
                 StoragePermissionManager.checkPermission(this@MainActivity)
+            }
+
+            val requestNotificationLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestPermission()
+            ) { isGranted ->
+                NotificationSettingsManager.setNotificationEnabled(this@MainActivity, isGranted)
+            }
+
+            fun requestNotificationPermission() {
+                NotificationSettingsManager.setPromptedFirstTime(this@MainActivity, true)
+                showNotificationPermissionDialog = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    requestNotificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    NotificationSettingsManager.setNotificationEnabled(this@MainActivity, true)
+                }
+                // Notification ke baad → Storage dialog dikhao (agar zaroorat ho)
+                if (permissionState == StoragePermissionState.DENIED &&
+                    !StoragePermissionManager.hasPromptedFirstTime(this@MainActivity)) {
+                    showFirstTimePermissionDialog = true
+                }
             }
 
             fun requestAppPermissions() {
@@ -191,7 +220,28 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
-                    if (!showSplashScreen && showFirstTimePermissionDialog) {
+                    val isAuthNeeded = authState is com.swiftapp.data.model.AuthState.Unauthenticated
+                    val isLocked = !isSessionUnlocked && lockType != AppLockType.NONE
+                    val isReadyForHomePermissions = !showSplashScreen && !isAuthNeeded && !isLocked
+
+                    // Pehle Notification, phir Storage/File Access
+                    if (isReadyForHomePermissions && showNotificationPermissionDialog) {
+                        NotificationPermissionDialog(
+                            onAllow = {
+                                requestNotificationPermission()
+                            },
+                            onDeny = {
+                                NotificationSettingsManager.setPromptedFirstTime(this@MainActivity, true)
+                                NotificationSettingsManager.setNotificationEnabled(this@MainActivity, false)
+                                showNotificationPermissionDialog = false
+                                // Notification deny ke baad bhi storage dialog dikhao
+                                if (permissionState == StoragePermissionState.DENIED &&
+                                    !StoragePermissionManager.hasPromptedFirstTime(this@MainActivity)) {
+                                    showFirstTimePermissionDialog = true
+                                }
+                            }
+                        )
+                    } else if (isReadyForHomePermissions && showFirstTimePermissionDialog) {
                         FirstTimePermissionDialog(
                             languageViewModel = languageViewModel,
                             onAllow = {

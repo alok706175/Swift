@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.swiftapp.utils.StoragePermissionManager
+import com.swiftapp.utils.StoragePermissionState
 import java.io.File
 
 sealed interface PdfUiState {
@@ -62,7 +64,10 @@ class PdfViewModel(
     private val _isGridView = MutableStateFlow(false)
     val isGridView: StateFlow<Boolean> = _isGridView.asStateFlow()
 
-    private val _hasStoragePermission = MutableStateFlow(true)
+    // Actual current permission state se initialize karo — DENIED hone par hi banner dikhe
+    private val _hasStoragePermission = MutableStateFlow(
+        StoragePermissionManager.permissionStateFlow.value != StoragePermissionState.DENIED
+    )
     val hasStoragePermission: StateFlow<Boolean> = _hasStoragePermission.asStateFlow()
 
     private val _searchResults = MutableStateFlow<List<PdfFileItem>>(emptyList())
@@ -104,15 +109,9 @@ class PdfViewModel(
     }
 
     fun checkStoragePermissions(context: Context) {
-        val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Environment.isExternalStorageManager()
-        } else {
-            androidx.core.content.ContextCompat.checkSelfPermission(
-                context,
-                android.Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        }
-        _hasStoragePermission.value = hasPermission
+        // StoragePermissionManager se sync rakho — GRANTED ya LIMITED dono mein banner nahi
+        val state = StoragePermissionManager.checkPermission(context)
+        _hasStoragePermission.value = (state != StoragePermissionState.DENIED)
     }
 
     fun setStoragePermission(granted: Boolean) {

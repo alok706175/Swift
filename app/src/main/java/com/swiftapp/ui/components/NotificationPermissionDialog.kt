@@ -6,7 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -25,12 +25,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.swiftapp.ui.viewmodel.LanguageViewModel
 import com.swiftapp.utils.HapticManager
 
 @Composable
-fun FirstTimePermissionDialog(
-    @Suppress("UNUSED_PARAMETER") languageViewModel: LanguageViewModel,
+fun NotificationPermissionDialog(
     onAllow: () -> Unit,
     onDeny: () -> Unit
 ) {
@@ -65,7 +63,7 @@ fun FirstTimePermissionDialog(
             ) {
                 // Top Outline Icon
                 Icon(
-                    imageVector = Icons.Outlined.Folder,
+                    imageVector = Icons.Outlined.Notifications,
                     contentDescription = null,
                     tint = iconTint,
                     modifier = Modifier.size(28.dp)
@@ -73,14 +71,14 @@ fun FirstTimePermissionDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Title: Allow Swift to access files on your device?
+                // Title: Allow Swift to send you notifications?
                 Text(
                     text = buildAnnotatedString {
                         append("Allow ")
                         withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
                             append("Swift")
                         }
-                        append(" to access files on your device?")
+                        append(" to send you\nnotifications?")
                     },
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontSize = 19.sp,
