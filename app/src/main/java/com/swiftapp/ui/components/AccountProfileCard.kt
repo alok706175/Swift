@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.swiftapp.R
+import androidx.compose.ui.res.painterResource
 import com.swiftapp.data.model.AuthProvider
 import com.swiftapp.data.model.UserProfile
 import com.swiftapp.utils.HapticManager
@@ -355,8 +357,8 @@ fun AccountProfileCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Outlined.Person,
-                            contentDescription = null,
+                            painter = painterResource(id = R.drawable.ic_guest_user),
+                            contentDescription = "Guest User",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(26.dp)
                         )
