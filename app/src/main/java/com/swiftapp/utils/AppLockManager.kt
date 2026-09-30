@@ -80,6 +80,8 @@ object AppLockManager {
     private const val KEY_LOCK_TYPE = "security_lock_type"
     private const val KEY_PIN_HASH = "security_pin_hash"
     private const val KEY_PIN_LENGTH = "security_pin_length"
+    private const val KEY_BIO_PIN_HASH = "security_bio_pin_hash"
+    private const val KEY_BIO_PIN_LENGTH = "security_bio_pin_length"
     private const val KEY_PATTERN_HASH = "security_pattern_hash"
     private const val KEY_AUTO_LOCK_TIMEOUT = "security_auto_lock_timeout"
     private const val KEY_PRIVACY_SHIELD = "security_privacy_shield_enabled"
@@ -109,7 +111,11 @@ object AppLockManager {
             prefs = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
             val savedType = prefs?.getString(KEY_LOCK_TYPE, AppLockType.NONE.id) ?: AppLockType.NONE.id
-            val lockType = AppLockType.fromId(savedType)
+            var lockType = AppLockType.fromId(savedType)
+            if (lockType == AppLockType.DEVICE_CREDENTIAL) {
+                lockType = AppLockType.NONE
+                prefs?.edit()?.putString(KEY_LOCK_TYPE, AppLockType.NONE.id)?.apply()
+            }
             _lockTypeFlow.value = lockType
 
             val savedTimeout = prefs?.getString(KEY_AUTO_LOCK_TIMEOUT, AutoLockTimeout.IMMEDIATE.id) ?: AutoLockTimeout.IMMEDIATE.id
@@ -123,6 +129,24 @@ object AppLockManager {
             } else {
                 _isSessionUnlocked.value = false
             }
+
+            // Ensure only data belonging to the currently active lockType is retained; delete all previous/stale methods
+            val editor = prefs?.edit()
+            when (lockType) {
+                AppLockType.NONE, AppLockType.DEVICE_CREDENTIAL -> {
+                    editor?.remove(KEY_PIN_HASH)?.remove(KEY_PIN_LENGTH)?.remove(KEY_BIO_PIN_HASH)?.remove(KEY_BIO_PIN_LENGTH)?.remove(KEY_PATTERN_HASH)
+                }
+                AppLockType.PIN_4, AppLockType.PIN_6 -> {
+                    editor?.remove(KEY_BIO_PIN_HASH)?.remove(KEY_BIO_PIN_LENGTH)?.remove(KEY_PATTERN_HASH)
+                }
+                AppLockType.BIOMETRIC_OR_PIN -> {
+                    editor?.remove(KEY_PIN_HASH)?.remove(KEY_PIN_LENGTH)?.remove(KEY_PATTERN_HASH)
+                }
+                AppLockType.PATTERN -> {
+                    editor?.remove(KEY_PIN_HASH)?.remove(KEY_PIN_LENGTH)?.remove(KEY_BIO_PIN_HASH)?.remove(KEY_BIO_PIN_LENGTH)
+                }
+            }
+            editor?.apply()
         }
     }
 
@@ -149,6 +173,9 @@ object AppLockManager {
         prefs?.edit()
             ?.putString(KEY_PIN_HASH, hash)
             ?.putInt(KEY_PIN_LENGTH, length)
+            ?.remove(KEY_BIO_PIN_HASH)
+            ?.remove(KEY_BIO_PIN_LENGTH)
+            ?.remove(KEY_PATTERN_HASH)
             ?.apply()
     }
 
@@ -156,6 +183,44 @@ object AppLockManager {
         if (isLockedOut()) return false
 
         val savedHash = prefs?.getString(KEY_PIN_HASH, null) ?: return false
+        val matched = hashString(pin) == savedHash
+
+        if (matched) {
+            recordSuccessfulAttempt()
+        } else {
+            recordFailedAttempt()
+        }
+        return matched
+    }
+
+    // --- Biometric Dedicated Backup PIN Management ---
+
+    fun hasBioPinSet(context: Context): Boolean {
+        init(context)
+        return !prefs?.getString(KEY_BIO_PIN_HASH, null).isNullOrEmpty()
+    }
+
+    fun getBioPinLength(context: Context): Int {
+        init(context)
+        return prefs?.getInt(KEY_BIO_PIN_LENGTH, 4) ?: 4
+    }
+
+    fun setBioPin(context: Context, pin: String, length: Int = pin.length) {
+        init(context)
+        val hash = hashString(pin)
+        prefs?.edit()
+            ?.putString(KEY_BIO_PIN_HASH, hash)
+            ?.putInt(KEY_BIO_PIN_LENGTH, length)
+            ?.remove(KEY_PIN_HASH)
+            ?.remove(KEY_PIN_LENGTH)
+            ?.remove(KEY_PATTERN_HASH)
+            ?.apply()
+    }
+
+    fun verifyBioPin(pin: String): Boolean {
+        if (isLockedOut()) return false
+
+        val savedHash = prefs?.getString(KEY_BIO_PIN_HASH, null) ?: return false
         val matched = hashString(pin) == savedHash
 
         if (matched) {
@@ -177,7 +242,13 @@ object AppLockManager {
         init(context)
         val patternString = pattern.joinToString(",")
         val hash = hashString(patternString)
-        prefs?.edit()?.putString(KEY_PATTERN_HASH, hash)?.apply()
+        prefs?.edit()
+            ?.putString(KEY_PATTERN_HASH, hash)
+            ?.remove(KEY_PIN_HASH)
+            ?.remove(KEY_PIN_LENGTH)
+            ?.remove(KEY_BIO_PIN_HASH)
+            ?.remove(KEY_BIO_PIN_LENGTH)
+            ?.apply()
     }
 
     fun verifyPattern(pattern: List<Int>): Boolean {
@@ -265,7 +336,22 @@ object AppLockManager {
     fun setLockType(context: Context, type: AppLockType) {
         init(context)
         _lockTypeFlow.value = type
-        prefs?.edit()?.putString(KEY_LOCK_TYPE, type.id)?.apply()
+        val editor = prefs?.edit()?.putString(KEY_LOCK_TYPE, type.id)
+        when (type) {
+            AppLockType.NONE, AppLockType.DEVICE_CREDENTIAL -> {
+                editor?.remove(KEY_PIN_HASH)?.remove(KEY_PIN_LENGTH)?.remove(KEY_BIO_PIN_HASH)?.remove(KEY_BIO_PIN_LENGTH)?.remove(KEY_PATTERN_HASH)
+            }
+            AppLockType.PIN_4, AppLockType.PIN_6 -> {
+                editor?.remove(KEY_BIO_PIN_HASH)?.remove(KEY_BIO_PIN_LENGTH)?.remove(KEY_PATTERN_HASH)
+            }
+            AppLockType.BIOMETRIC_OR_PIN -> {
+                editor?.remove(KEY_PIN_HASH)?.remove(KEY_PIN_LENGTH)?.remove(KEY_PATTERN_HASH)
+            }
+            AppLockType.PATTERN -> {
+                editor?.remove(KEY_PIN_HASH)?.remove(KEY_PIN_LENGTH)?.remove(KEY_BIO_PIN_HASH)?.remove(KEY_BIO_PIN_LENGTH)
+            }
+        }
+        editor?.apply()
         if (type == AppLockType.NONE) {
             _isSessionUnlocked.value = true
         }
@@ -301,15 +387,46 @@ object AppLockManager {
     }
 
     fun disableLock(context: Context) {
+        clearAllLockData(context)
+    }
+
+    fun clearAllLockData(context: Context) {
         init(context)
         _lockTypeFlow.value = AppLockType.NONE
         prefs?.edit()
             ?.putString(KEY_LOCK_TYPE, AppLockType.NONE.id)
             ?.remove(KEY_PIN_HASH)
+            ?.remove(KEY_PIN_LENGTH)
+            ?.remove(KEY_BIO_PIN_HASH)
+            ?.remove(KEY_BIO_PIN_LENGTH)
             ?.remove(KEY_PATTERN_HASH)
             ?.apply()
         _isSessionUnlocked.value = true
-        recordSuccessfulAttempt()
+        failedAttempts = 0
+        lockoutUntilUptimeMs = 0L
+    }
+
+    fun clearPin(context: Context) {
+        init(context)
+        prefs?.edit()
+            ?.remove(KEY_PIN_HASH)
+            ?.remove(KEY_PIN_LENGTH)
+            ?.apply()
+    }
+
+    fun clearBioPin(context: Context) {
+        init(context)
+        prefs?.edit()
+            ?.remove(KEY_BIO_PIN_HASH)
+            ?.remove(KEY_BIO_PIN_LENGTH)
+            ?.apply()
+    }
+
+    fun clearPattern(context: Context) {
+        init(context)
+        prefs?.edit()
+            ?.remove(KEY_PATTERN_HASH)
+            ?.apply()
     }
 
     fun unlockSession() {

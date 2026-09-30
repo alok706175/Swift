@@ -4,12 +4,16 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Lock
@@ -24,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.swiftapp.ui.viewmodel.LanguageViewModel
 import com.swiftapp.utils.AppLockManager
@@ -33,27 +38,23 @@ import com.swiftapp.utils.HapticManager
 fun PinSetupDialog(
     languageViewModel: LanguageViewModel,
     targetLength: Int = 4,
-    onPinSetSuccess: () -> Unit,
+    allowLengthToggle: Boolean = false,
+    isBioPin: Boolean = false,
+    titlePrefix: String? = null,
+    onPinSetSuccess: (Int) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val hasExistingPin = remember { AppLockManager.hasPinSet(context) }
-    val existingPinLength = remember { AppLockManager.getPinLength(context) }
-    var selectedLength by remember { mutableIntStateOf(targetLength) }
+    var selectedLength by remember(targetLength) { mutableIntStateOf(targetLength) }
 
-    // Step: 0 = Verify Old PIN, 1 = Enter New PIN, 2 = Confirm New PIN
-    var step by remember { mutableIntStateOf(if (hasExistingPin) 0 else 1) }
-    var oldPin by remember { mutableStateOf("") }
-    var firstPin by remember { mutableStateOf("") }
-    var confirmPin by remember { mutableStateOf("") }
+    // Step: 1 = Enter New PIN, 2 = Confirm New PIN
+    var step by remember(targetLength) { mutableIntStateOf(1) }
+    var firstPin by remember(targetLength) { mutableStateOf("") }
+    var confirmPin by remember(targetLength) { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val activeDotCount = if (step == 0) existingPinLength else selectedLength
-    val currentPin = when (step) {
-        0 -> oldPin
-        1 -> firstPin
-        else -> confirmPin
-    }
+    val activeDotCount = selectedLength
+    val currentPin = if (step == 1) firstPin else confirmPin
 
     // Shake animation on error
     val shakeOffset = remember { Animatable(0f) }
@@ -81,47 +82,14 @@ fun PinSetupDialog(
         HapticManager.light()
 
         when (step) {
-            0 -> {
-                if (oldPin.length < existingPinLength) {
-                    val updated = oldPin + digit
-                    oldPin = updated
-                    if (updated.length == existingPinLength) {
-                        if (AppLockManager.verifyPin(updated)) {
-                            HapticManager.success()
-                            step = 1
-                        } else {
-                            HapticManager.error()
-                            errorMessage = languageViewModel.getString("pin_incorrect_error")
-                            oldPin = ""
-                        }
-                    }
-                }
-            }
             1 -> {
                 if (firstPin.length < selectedLength) {
-                    val updated = firstPin + digit
-                    firstPin = updated
-                    if (updated.length == selectedLength) {
-                        step = 2
-                    }
+                    firstPin = firstPin + digit
                 }
             }
             2 -> {
                 if (confirmPin.length < selectedLength) {
-                    val updated = confirmPin + digit
-                    confirmPin = updated
-                    if (updated.length == selectedLength) {
-                        if (updated == firstPin) {
-                            HapticManager.success()
-                            AppLockManager.setPin(context, updated, selectedLength)
-                            onPinSetSuccess()
-                            onDismiss()
-                        } else {
-                            HapticManager.error()
-                            errorMessage = languageViewModel.getString("pin_mismatch_error")
-                            confirmPin = ""
-                        }
-                    }
+                    confirmPin = confirmPin + digit
                 }
             }
         }
@@ -132,17 +100,9 @@ fun PinSetupDialog(
         HapticManager.light()
 
         when (step) {
-            0 -> {
-                if (oldPin.isNotEmpty()) {
-                    oldPin = oldPin.dropLast(1)
-                }
-            }
             1 -> {
                 if (firstPin.isNotEmpty()) {
                     firstPin = firstPin.dropLast(1)
-                } else if (hasExistingPin) {
-                    step = 0
-                    oldPin = ""
                 }
             }
             2 -> {
@@ -150,7 +110,6 @@ fun PinSetupDialog(
                     confirmPin = confirmPin.dropLast(1)
                 } else {
                     step = 1
-                    firstPin = ""
                 }
             }
         }
@@ -189,7 +148,7 @@ fun PinSetupDialog(
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Lock,
+                                    imageVector = if (isBioPin) Icons.Outlined.Fingerprint else Icons.Outlined.Lock,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
@@ -197,15 +156,16 @@ fun PinSetupDialog(
                             }
                         }
                         Column {
-                            val title = when (step) {
-                                0 -> "Enter Current PIN"
-                                1 -> if (selectedLength == 6) "Set 6-Digit PIN" else "Set 4-Digit PIN"
-                                else -> "Confirm $selectedLength-Digit PIN"
+                            val pfx = if (!titlePrefix.isNullOrEmpty()) "$titlePrefix " else ""
+                            val title = if (step == 1) {
+                                "${pfx}Set $selectedLength-Digit PIN"
+                            } else {
+                                "${pfx}Confirm $selectedLength-Digit PIN"
                             }
-                            val desc = when (step) {
-                                0 -> "Verify your identity before setting a new PIN"
-                                1 -> "Enter a $selectedLength-digit security PIN"
-                                else -> "Re-enter your $selectedLength-digit PIN"
+                            val desc = if (step == 1) {
+                                "Enter a $selectedLength-digit ${if (isBioPin) "backup " else ""}security PIN"
+                            } else {
+                                "Re-enter your $selectedLength-digit ${if (isBioPin) "backup " else ""}PIN"
                             }
                             Text(
                                 text = title,
@@ -229,51 +189,42 @@ fun PinSetupDialog(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 
-                // Length Selector (Visible in Step 1 if user wants to switch between 4 and 6 digits)
-                if (step == 1) {
+                // Length Selector Toggle (4 Digits vs 6 Digits)
+                if (step == 1 && allowLengthToggle) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                            .padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        ) {
-                            Row(modifier = Modifier.padding(3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Surface(
-                                    onClick = {
-                                        selectedLength = 4
-                                        firstPin = ""
+                        listOf(4, 6).forEach { len ->
+                            val isSelected = selectedLength == len
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        if (selectedLength != len) {
+                                            HapticManager.light()
+                                            selectedLength = len
+                                            firstPin = ""
+                                            confirmPin = ""
+                                            errorMessage = null
+                                        }
                                     },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (selectedLength == 4) MaterialTheme.colorScheme.primary else Color.Transparent
-                                ) {
-                                    Text(
-                                        text = "4-Digit PIN",
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                                        fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = if (selectedLength == 4) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                Surface(
-                                    onClick = {
-                                        selectedLength = 6
-                                        firstPin = ""
-                                    },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (selectedLength == 6) MaterialTheme.colorScheme.primary else Color.Transparent
-                                ) {
-                                    Text(
-                                        text = "6-Digit PIN",
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                                        fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = if (selectedLength == 6) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = "$len-Digit PIN",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(vertical = 6.dp)
+                                )
                             }
                         }
                     }
@@ -334,10 +285,61 @@ fun PinSetupDialog(
                     )
                 }
 
-                // Numeric Keypad Grid
+                // Step 2 indicator / helper
+                if (step == 2) {
+                    TextButton(
+                        onClick = {
+                            HapticManager.light()
+                            step = 1
+                            confirmPin = ""
+                            errorMessage = null
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Change PIN",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                // Numeric Keypad Grid: Backspace on Left of 0, Next/Confirm on Right of 0
                 NumericKeypad(
                     onDigitClick = { handleDigit(it) },
-                    onBackspaceClick = { handleBackspace() }
+                    onBackspaceClick = { handleBackspace() },
+                    onNextClick = {
+                        if (step == 1 && firstPin.length == selectedLength) {
+                            HapticManager.light()
+                            step = 2
+                            errorMessage = null
+                        } else if (step == 2 && confirmPin.length == selectedLength) {
+                            if (confirmPin == firstPin) {
+                                HapticManager.success()
+                                if (isBioPin) {
+                                    AppLockManager.setBioPin(context, confirmPin, selectedLength)
+                                } else {
+                                    AppLockManager.setPin(context, confirmPin, selectedLength)
+                                }
+                                onPinSetSuccess(selectedLength)
+                                onDismiss()
+                            } else {
+                                HapticManager.error()
+                                errorMessage = languageViewModel.getString("pin_mismatch_error")
+                                confirmPin = ""
+                            }
+                        }
+                    },
+                    isNextEnabled = if (step == 1) firstPin.length == selectedLength else confirmPin.length == selectedLength,
+                    nextIcon = if (step == 1) Icons.AutoMirrored.Filled.ArrowForward else Icons.Default.Check,
+                    backspaceOnLeft = true
                 )
             }
         }

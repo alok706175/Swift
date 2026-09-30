@@ -32,6 +32,8 @@ fun PatternLockView(
     modifier: Modifier = Modifier,
     isError: Boolean = false,
     enabled: Boolean = true,
+    resetTrigger: Any? = null,
+    onErrorCleared: (() -> Unit)? = null,
     onPatternCompleted: (List<Int>) -> Unit
 ) {
     var connectedNodes by remember { mutableStateOf<List<Int>>(emptyList()) }
@@ -54,7 +56,13 @@ fun PatternLockView(
             kotlinx.coroutines.delay(800)
             connectedNodes = emptyList()
             currentTouchPoint = null
+            onErrorCleared?.invoke()
         }
+    }
+
+    LaunchedEffect(resetTrigger) {
+        connectedNodes = emptyList()
+        currentTouchPoint = null
     }
 
     Box(

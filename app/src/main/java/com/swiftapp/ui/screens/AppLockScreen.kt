@@ -1,5 +1,6 @@
 package com.swiftapp.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockPerson
@@ -45,11 +47,20 @@ import kotlinx.coroutines.delay
 @Composable
 fun AppLockScreen(
     languageViewModel: LanguageViewModel,
-    onUnlocked: () -> Unit
+    onUnlocked: () -> Unit,
+    onDismiss: (() -> Unit)? = null
 ) {
+    if (onDismiss != null) {
+        BackHandler(onBack = onDismiss)
+    }
+
     val context = LocalContext.current
     val lockType by AppLockManager.lockTypeFlow.collectAsState()
-    val pinLength = remember { AppLockManager.getPinLength(context) }
+    val pinLength = if (lockType == AppLockType.BIOMETRIC_OR_PIN) {
+        AppLockManager.getBioPinLength(context)
+    } else {
+        AppLockManager.getPinLength(context)
+    }
     val targetPinDigits = if (lockType == AppLockType.PIN_6) 6 else if (lockType == AppLockType.PIN_4) 4 else pinLength
 
     var enteredPin by remember { mutableStateOf("") }
@@ -159,7 +170,12 @@ fun AppLockScreen(
             val updated = enteredPin + digit
             enteredPin = updated
             if (updated.length == targetPinDigits) {
-                if (AppLockManager.verifyPin(updated)) {
+                val isVerified = if (lockType == AppLockType.BIOMETRIC_OR_PIN) {
+                    AppLockManager.verifyBioPin(updated)
+                } else {
+                    AppLockManager.verifyPin(updated)
+                }
+                if (isVerified) {
                     HapticManager.success()
                     AppLockManager.unlockSession()
                     onUnlocked()
@@ -221,6 +237,25 @@ fun AppLockScreen(
             .background(backgroundGradient),
         contentAlignment = Alignment.Center
     ) {
+        if (onDismiss != null) {
+            IconButton(
+                onClick = {
+                    HapticManager.light()
+                    onDismiss()
+                },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Cancel",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -293,7 +328,7 @@ fun AppLockScreen(
                         AppLockType.DEVICE_CREDENTIAL -> "Device Unlock"
                         AppLockType.PIN_6 -> "Enter 6-Digit Passcode"
                         AppLockType.PIN_4 -> "Enter 4-Digit Passcode"
-                        else -> "Enter Passcode"
+                        else -> if (targetPinDigits == 6) "Enter 6-Digit Passcode" else "Enter 4-Digit Passcode"
                     },
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontSize = 22.sp,
@@ -408,6 +443,7 @@ fun AppLockScreen(
                         PatternLockView(
                             onPatternCompleted = { handlePattern(it) },
                             isError = isPatternError,
+                            onErrorCleared = { isPatternError = false },
                             modifier = Modifier.size(310.dp)
                         )
                     }

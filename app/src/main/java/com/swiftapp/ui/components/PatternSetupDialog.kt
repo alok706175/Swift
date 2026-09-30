@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Gesture
 import androidx.compose.material3.*
@@ -18,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.swiftapp.utils.AppLockType
 import com.swiftapp.ui.viewmodel.LanguageViewModel
 import com.swiftapp.utils.AppLockManager
 import com.swiftapp.utils.HapticManager
@@ -29,12 +33,14 @@ fun PatternSetupDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val hasExistingPattern = remember { AppLockManager.hasPatternSet(context) }
+    val hasExistingPattern = remember { AppLockManager.hasPatternSet(context) && AppLockManager.lockTypeFlow.value == AppLockType.PATTERN }
     // Step: 0 = Verify Old Pattern, 1 = Draw New Pattern, 2 = Confirm New Pattern
     var step by remember { mutableIntStateOf(if (hasExistingPattern) 0 else 1) }
     var firstPattern by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var confirmPattern by remember { mutableStateOf<List<Int>>(emptyList()) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isErrorPattern by remember { mutableStateOf(false) }
+    var patternResetTrigger by remember { mutableIntStateOf(0) }
 
     // Shake animation on error
     val shakeOffset = remember { Animatable(0f) }
@@ -67,6 +73,7 @@ fun PatternSetupDialog(
                 if (AppLockManager.verifyPattern(pattern)) {
                     HapticManager.success()
                     step = 1
+                    patternResetTrigger++
                 } else {
                     HapticManager.error()
                     isErrorPattern = true
@@ -79,25 +86,42 @@ fun PatternSetupDialog(
                     HapticManager.error()
                     isErrorPattern = true
                     errorMessage = "Connect at least 4 dots to create pattern."
+                    firstPattern = emptyList()
                 } else {
                     HapticManager.light()
                     firstPattern = pattern
-                    step = 2
+                    errorMessage = null
+                    isErrorPattern = false
                 }
             }
             2 -> {
-                // Confirm pattern
-                if (pattern == firstPattern) {
-                    HapticManager.success()
-                    AppLockManager.setPattern(context, pattern)
-                    onPatternSetSuccess()
-                    onDismiss()
-                } else {
+                // Confirm pattern: user draws, must click Done to set
+                if (pattern.size < 4) {
                     HapticManager.error()
                     isErrorPattern = true
-                    errorMessage = "Patterns do not match. Draw again."
+                    errorMessage = "Connect at least 4 dots."
+                    confirmPattern = emptyList()
+                } else {
+                    HapticManager.light()
+                    confirmPattern = pattern
+                    errorMessage = null
+                    isErrorPattern = false
                 }
             }
+        }
+    }
+
+    fun handleDonePattern() {
+        if (confirmPattern == firstPattern) {
+            HapticManager.success()
+            AppLockManager.setPattern(context, confirmPattern)
+            onPatternSetSuccess()
+            onDismiss()
+        } else {
+            HapticManager.error()
+            isErrorPattern = true
+            errorMessage = "Patterns do not match. Draw again."
+            confirmPattern = emptyList()
         }
     }
 
@@ -149,8 +173,8 @@ fun PatternSetupDialog(
                             }
                             val desc = when (step) {
                                 0 -> "Verify your identity first"
-                                1 -> "Connect at least 4 dots"
-                                else -> "Draw pattern again to confirm"
+                                1 -> if (firstPattern.size >= 4) "Pattern recorded. Tap Next to continue" else "Connect at least 4 dots"
+                                else -> if (confirmPattern.isNotEmpty()) "Pattern recorded. Tap Done to set lock" else "Draw pattern again to confirm"
                             }
                             Text(
                                 text = title,
@@ -190,18 +214,128 @@ fun PatternSetupDialog(
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp),
                     isError = isErrorPattern,
+                    resetTrigger = patternResetTrigger,
+                    onErrorCleared = { isErrorPattern = false },
                     onPatternCompleted = { handlePattern(it) }
                 )
 
-                // Reset / Retry action
-                if (step == 2) {
-                    TextButton(onClick = {
-                        step = 1
-                        firstPattern = emptyList()
-                        errorMessage = null
-                        isErrorPattern = false
-                    }) {
-                        Text("Reset Pattern", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                // Step 1: Next button / Step 2: Reset action
+                if (step == 1) {
+                    if (firstPattern.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    HapticManager.light()
+                                    firstPattern = emptyList()
+                                    errorMessage = null
+                                    isErrorPattern = false
+                                    patternResetTrigger++
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Clear", fontWeight = FontWeight.SemiBold)
+                            }
+                            Button(
+                                onClick = {
+                                    if (firstPattern.size >= 4) {
+                                        HapticManager.light()
+                                        step = 2
+                                        errorMessage = null
+                                        isErrorPattern = false
+                                        patternResetTrigger++
+                                    }
+                                },
+                                enabled = firstPattern.size >= 4,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Next", fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                } else if (step == 2) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TextButton(
+                            onClick = {
+                                HapticManager.light()
+                                step = 1
+                                firstPattern = emptyList()
+                                confirmPattern = emptyList()
+                                errorMessage = null
+                                isErrorPattern = false
+                                patternResetTrigger++
+                            },
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "Change Pattern",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+
+                        if (confirmPattern.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        HapticManager.light()
+                                        confirmPattern = emptyList()
+                                        errorMessage = null
+                                        isErrorPattern = false
+                                        patternResetTrigger++
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text("Clear", fontWeight = FontWeight.SemiBold)
+                                }
+                                Button(
+                                    onClick = { handleDonePattern() },
+                                    enabled = confirmPattern.isNotEmpty(),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text("Done", fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

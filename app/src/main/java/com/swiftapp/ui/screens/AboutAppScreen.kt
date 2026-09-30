@@ -3,6 +3,12 @@ package com.swiftapp.ui.screens
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -17,18 +23,24 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.swiftapp.ui.viewmodel.LanguageViewModel
@@ -287,6 +299,100 @@ fun AboutAppScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                val infiniteTransition = rememberInfiniteTransition(label = "heart_glow")
+                val glowScale by infiniteTransition.animateFloat(
+                    initialValue = 0.85f,
+                    targetValue = 1.35f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(900, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "glow_scale"
+                )
+                val glowAlpha by infiniteTransition.animateFloat(
+                    initialValue = 0.35f,
+                    targetValue = 0.95f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(900, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "glow_alpha"
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Made with ",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    ) {
+                        // Ambient glowing halo ring
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .graphicsLayer {
+                                    scaleX = glowScale
+                                    scaleY = glowScale
+                                    alpha = glowAlpha * 0.75f
+                                }
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFFFF1744).copy(alpha = 0.9f),
+                                            Color(0xFFFF5252).copy(alpha = 0.35f),
+                                            Color.Transparent
+                                        )
+                                    ),
+                                    shape = CircleShape
+                                )
+                        )
+                        // Radiant core
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .graphicsLayer {
+                                    alpha = glowAlpha
+                                }
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            Color(0xFFFF5252).copy(alpha = 0.85f),
+                                            Color.Transparent
+                                        )
+                                    ),
+                                    shape = CircleShape
+                                )
+                        )
+                        // Heart symbol with slight pulse
+                        Text(
+                            text = "❤️",
+                            fontSize = 15.sp,
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = 1f + (glowScale - 1f) * 0.25f
+                                scaleY = 1f + (glowScale - 1f) * 0.25f
+                            }
+                        )
+                    }
+                    Text(
+                        text = " by ",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Alok",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = brandColor
+                    )
+                }
                 Text(
                     text = "© 2026 Swift PDF • All Rights Reserved",
                     style = MaterialTheme.typography.labelSmall,

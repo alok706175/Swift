@@ -114,6 +114,7 @@ fun MainScreen(
     val isGridView by viewModel.isGridView.collectAsState()
     val hasStoragePermission by viewModel.hasStoragePermission.collectAsState()
     val currentLanguage by languageViewModel.currentLanguage.collectAsState()
+    val lockType by com.swiftapp.utils.AppLockManager.lockTypeFlow.collectAsState()
 
     var selectedTab by remember { mutableStateOf(NavTab.Home) }
     var searchQuery by remember { mutableStateOf("") }
@@ -193,6 +194,8 @@ fun MainScreen(
     var isLanguageScreenOpen by remember { mutableStateOf(false) }
     var isPrivacyPolicyScreenOpen by remember { mutableStateOf(false) }
     var isAboutScreenOpen by remember { mutableStateOf(false) }
+    var isAppLockVerifyScreenOpen by remember { mutableStateOf(false) }
+    var isAppLockSettingsScreenOpen by remember { mutableStateOf(false) }
 
     if (readerFile != null) {
         BackHandler { readerFile = null }
@@ -451,6 +454,32 @@ fun MainScreen(
         AboutAppScreen(
             languageViewModel = languageViewModel,
             onBack = { isAboutScreenOpen = false }
+        )
+        return
+    }
+
+    if (isAppLockVerifyScreenOpen) {
+        BackHandler { isAppLockVerifyScreenOpen = false }
+        AppLockScreen(
+            languageViewModel = languageViewModel,
+            onUnlocked = {
+                isAppLockVerifyScreenOpen = false
+                isAppLockSettingsScreenOpen = true
+            },
+            onDismiss = {
+                isAppLockVerifyScreenOpen = false
+            }
+        )
+        return
+    }
+
+    if (isAppLockSettingsScreenOpen) {
+        BackHandler { isAppLockSettingsScreenOpen = false }
+        com.swiftapp.ui.components.AppLockSelectionDialog(
+            currentType = lockType,
+            languageViewModel = languageViewModel,
+            onLockTypeChanged = { },
+            onDismiss = { isAppLockSettingsScreenOpen = false }
         )
         return
     }
@@ -884,7 +913,9 @@ fun MainScreen(
                             authViewModel = authViewModel,
                             onOpenLanguageScreen = { isLanguageScreenOpen = true },
                             onOpenPrivacyScreen = { isPrivacyPolicyScreenOpen = true },
-                            onOpenAboutScreen = { isAboutScreenOpen = true }
+                            onOpenAboutScreen = { isAboutScreenOpen = true },
+                            onOpenAppLockVerify = { isAppLockVerifyScreenOpen = true },
+                            onOpenAppLockSettings = { isAppLockSettingsScreenOpen = true }
                         )
                     }
                 }
@@ -2441,7 +2472,9 @@ fun SettingsContent(
     ),
     onOpenLanguageScreen: () -> Unit = {},
     onOpenPrivacyScreen: () -> Unit = {},
-    onOpenAboutScreen: () -> Unit = {}
+    onOpenAboutScreen: () -> Unit = {},
+    onOpenAppLockVerify: () -> Unit = {},
+    onOpenAppLockSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val activity = context as? android.app.Activity
@@ -2477,7 +2510,6 @@ fun SettingsContent(
 
     var showSaveLocationDialog by remember { mutableStateOf(false) }
     var showFileNamingDialog by remember { mutableStateOf(false) }
-    var showAppLockDialog by remember { mutableStateOf(false) }
     var showPinSetupDialog by remember { mutableStateOf(false) }
     var showScanFilterDialog by remember { mutableStateOf(false) }
     var showContactDevDialog by remember { mutableStateOf(false) }
@@ -2546,29 +2578,18 @@ fun SettingsContent(
         )
     }
 
-    if (showAppLockDialog) {
-        com.swiftapp.ui.components.AppLockSelectionDialog(
-            currentType = lockType,
-            languageViewModel = languageViewModel,
-            onRequestSetPin = {
-                showAppLockDialog = false
-                showPinSetupDialog = true
-            },
-            onLockTypeChanged = {
-                showAppLockDialog = false
-            },
-            onDismiss = { showAppLockDialog = false }
-        )
-    }
-
     if (showPinSetupDialog) {
         com.swiftapp.ui.components.PinSetupDialog(
             languageViewModel = languageViewModel,
-            onPinSetSuccess = {
+            targetLength = 4,
+            onPinSetSuccess = { lengthSet ->
                 showPinSetupDialog = false
-                if (lockType == com.swiftapp.utils.AppLockType.NONE) {
-                    com.swiftapp.utils.AppLockManager.setLockType(context, com.swiftapp.utils.AppLockType.PIN_4)
+                val newLockType = if (lengthSet == 6) {
+                    com.swiftapp.utils.AppLockType.PIN_6
+                } else {
+                    com.swiftapp.utils.AppLockType.PIN_4
                 }
+                com.swiftapp.utils.AppLockManager.setLockType(context, newLockType)
             },
             onDismiss = { showPinSetupDialog = false }
         )
@@ -2871,7 +2892,13 @@ fun SettingsContent(
                 subtitle = lockSubtitle,
                 iconTint = Color(0xFF8B5CF6),
                 iconBgColor = Color(0xFF8B5CF6).copy(alpha = 0.15f),
-                onClick = { showAppLockDialog = true },
+                onClick = {
+                    if (lockType != com.swiftapp.utils.AppLockType.NONE) {
+                        onOpenAppLockVerify()
+                    } else {
+                        onOpenAppLockSettings()
+                    }
+                },
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
             Row(

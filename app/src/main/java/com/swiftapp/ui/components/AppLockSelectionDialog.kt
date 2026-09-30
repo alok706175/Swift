@@ -1,5 +1,6 @@
 package com.swiftapp.ui.components
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,7 +9,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,6 +24,7 @@ import android.widget.Toast
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.fragment.app.FragmentActivity
 import com.swiftapp.ui.viewmodel.LanguageViewModel
@@ -30,6 +34,7 @@ import com.swiftapp.utils.AutoLockTimeout
 import com.swiftapp.utils.BiometricStatus
 import com.swiftapp.utils.HapticManager
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppLockSelectionDialog(
     currentType: AppLockType,
@@ -39,14 +44,15 @@ fun AppLockSelectionDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val activity = context as? FragmentActivity
-    var selectedType by remember { mutableStateOf(currentType) }
+    var selectedType by remember { mutableStateOf(if (currentType == AppLockType.DEVICE_CREDENTIAL) AppLockType.NONE else currentType) }
     val bioStatus = remember { AppLockManager.getBiometricStatus(context) }
     val isBiometricAvailable = bioStatus == BiometricStatus.AVAILABLE
     val isDeviceSecure = remember { AppLockManager.isDeviceSecure(context) }
 
     var hasPin by remember { mutableStateOf(AppLockManager.hasPinSet(context)) }
     var pinLength by remember { mutableIntStateOf(AppLockManager.getPinLength(context)) }
+    var hasBioPin by remember { mutableStateOf(AppLockManager.hasBioPinSet(context)) }
+    var bioPinLength by remember { mutableIntStateOf(AppLockManager.getBioPinLength(context)) }
     var hasPattern by remember { mutableStateOf(AppLockManager.hasPatternSet(context)) }
 
     val autoLockTimeout by AppLockManager.autoLockTimeoutFlow.collectAsState()
@@ -57,70 +63,204 @@ fun AppLockSelectionDialog(
     // Internal sub-dialog states for seamless setup
     var showPinSetupDialog by remember { mutableStateOf(false) }
     var pinSetupTargetLength by remember { mutableIntStateOf(4) }
+    var isBioPinSetup by remember { mutableStateOf(false) }
     var showPatternSetupDialog by remember { mutableStateOf(false) }
     var showBiometricEnrollDialog by remember { mutableStateOf(false) }
+    var showAddMethodDialog by remember { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 680.dp),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-        ) {
+    if (showAddMethodDialog) {
+        BackHandler { showAddMethodDialog = false }
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Add Unlock Method",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            HapticManager.light()
+                            showAddMethodDialog = false
+                        }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+            },
+            containerColor = MaterialTheme.colorScheme.background
+        ) { innerPadding ->
             Column(
                 modifier = Modifier
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                // Header informative banner
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
+                        modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(40.dp)
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            modifier = Modifier.size(44.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Outlined.Security,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                         }
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = languageViewModel.getString("settings_app_lock"),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                text = "Choose Authentication Method",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = languageViewModel.getString("settings_app_lock_sub"),
+                                text = "Select how you would like to secure Swift PDF. You can switch methods anytime in settings.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    TactileIconButton(
-                        onClick = onDismiss,
-                        icon = Icons.Default.Close,
-                        contentDescription = "Close",
-                        size = 32.dp
-                    )
                 }
 
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                Text(
+                    text = "AVAILABLE UNLOCK METHODS",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Method 1: 4-Digit PIN
+                    MethodSelectionItem(
+                        icon = Icons.Outlined.Pin,
+                        title = languageViewModel.getString("lock_type_pin_4"),
+                        subtitle = "Fast and easy 4-digit code",
+                        onClick = {
+                            pinSetupTargetLength = 4
+                            showPinSetupDialog = true
+                        }
+                    )
+
+                    // Method 2: 6-Digit PIN
+                    MethodSelectionItem(
+                        icon = Icons.Outlined.Password,
+                        title = languageViewModel.getString("lock_type_pin_6"),
+                        subtitle = "Enhanced 6-digit passcode security",
+                        onClick = {
+                            pinSetupTargetLength = 6
+                            showPinSetupDialog = true
+                        }
+                    )
+
+                    // Method 3: Pattern Lock
+                    MethodSelectionItem(
+                        icon = Icons.Outlined.Gesture,
+                        title = languageViewModel.getString("lock_type_pattern"),
+                        subtitle = "Draw a continuous pattern to unlock",
+                        onClick = {
+                            showPatternSetupDialog = true
+                        }
+                    )
+
+                    // Method 4: Biometric + PIN
+                    MethodSelectionItem(
+                        icon = Icons.Outlined.Fingerprint,
+                        title = languageViewModel.getString("lock_type_bio_pin"),
+                        subtitle = "Fingerprint / Face with PIN backup",
+                        onClick = {
+                            val currentBioStatus = AppLockManager.getBiometricStatus(context)
+                            when (currentBioStatus) {
+                                BiometricStatus.NO_HARDWARE, BiometricStatus.UNAVAILABLE -> {
+                                    Toast.makeText(
+                                        context,
+                                        "Biometric hardware is not available on this device",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                BiometricStatus.NOT_ENROLLED -> {
+                                    showBiometricEnrollDialog = true
+                                }
+                                BiometricStatus.AVAILABLE -> {
+                                    isBioPinSetup = true
+                                    pinSetupTargetLength = 4
+                                    showPinSetupDialog = true
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    } else {
+        BackHandler { onDismiss() }
+
+        Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = languageViewModel.getString("settings_app_lock"),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        HapticManager.light()
+                        onDismiss()
+                    }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                )
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
 
                 // Master Toggle: Enable App Lock
                 Surface(
@@ -153,24 +293,74 @@ fun AppLockSelectionDialog(
                             onCheckedChange = { enabled ->
                                 HapticManager.light()
                                 if (!enabled) {
+                                    // Turning OFF: Delete all saved lock types, PIN, and pattern completely
+                                    AppLockManager.clearAllLockData(context)
                                     selectedType = AppLockType.NONE
+                                    hasPin = false
+                                    pinLength = 4
+                                    hasPattern = false
+                                    onLockTypeChanged(AppLockType.NONE)
+                                    Toast.makeText(
+                                        context,
+                                        "App lock disabled & saved credentials removed",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 } else {
-                                    if (hasPin) {
-                                        selectedType = if (pinLength == 6) AppLockType.PIN_6 else AppLockType.PIN_4
-                                    } else if (hasPattern) {
-                                        selectedType = AppLockType.PATTERN
-                                    } else if (isBiometricAvailable) {
-                                        selectedType = AppLockType.BIOMETRIC_OR_PIN
-                                        pinSetupTargetLength = 4
-                                        showPinSetupDialog = true
-                                    } else {
-                                        selectedType = AppLockType.PIN_4
-                                        pinSetupTargetLength = 4
-                                        showPinSetupDialog = true
-                                    }
+                                    // Turning ON: Prompt user to add a new unlock method
+                                    showAddMethodDialog = true
                                 }
                             }
                         )
+                    }
+                }
+
+                if (!isLockEnabled) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Shield,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "Security & Privacy",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            Text(
+                                text = "Enable App Lock to require authentication each time you launch Swift PDF. You can secure your sensitive documents with a PIN passcode, pattern, or biometric fingerprint unlock.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 20.sp
+                            )
+                        }
                     }
                 }
 
@@ -189,18 +379,16 @@ fun AppLockSelectionDialog(
                             title = languageViewModel.getString("lock_type_pin_4"),
                             icon = Icons.Outlined.Pin,
                             isSelected = selectedType == AppLockType.PIN_4,
-                            trailingAction = if (hasPin && pinLength == 4) "Change" else null,
+                            trailingAction = if (selectedType == AppLockType.PIN_4 && hasPin && pinLength == 4) "Change" else null,
                             onTrailingActionClick = {
                                 pinSetupTargetLength = 4
                                 showPinSetupDialog = true
                             },
                             onClick = {
                                 HapticManager.light()
-                                if (!hasPin || pinLength != 4) {
+                                if (selectedType != AppLockType.PIN_4 || !hasPin || pinLength != 4) {
                                     pinSetupTargetLength = 4
                                     showPinSetupDialog = true
-                                } else {
-                                    selectedType = AppLockType.PIN_4
                                 }
                             }
                         )
@@ -210,18 +398,16 @@ fun AppLockSelectionDialog(
                             title = languageViewModel.getString("lock_type_pin_6"),
                             icon = Icons.Outlined.Password,
                             isSelected = selectedType == AppLockType.PIN_6,
-                            trailingAction = if (hasPin && pinLength == 6) "Change" else null,
+                            trailingAction = if (selectedType == AppLockType.PIN_6 && hasPin && pinLength == 6) "Change" else null,
                             onTrailingActionClick = {
                                 pinSetupTargetLength = 6
                                 showPinSetupDialog = true
                             },
                             onClick = {
                                 HapticManager.light()
-                                if (!hasPin || pinLength != 6) {
+                                if (selectedType != AppLockType.PIN_6 || !hasPin || pinLength != 6) {
                                     pinSetupTargetLength = 6
                                     showPinSetupDialog = true
-                                } else {
-                                    selectedType = AppLockType.PIN_6
                                 }
                             }
                         )
@@ -231,16 +417,14 @@ fun AppLockSelectionDialog(
                             title = languageViewModel.getString("lock_type_pattern"),
                             icon = Icons.Outlined.Gesture,
                             isSelected = selectedType == AppLockType.PATTERN,
-                            trailingAction = if (hasPattern) "Change" else null,
+                            trailingAction = if (selectedType == AppLockType.PATTERN && hasPattern) "Change" else null,
                             onTrailingActionClick = {
                                 showPatternSetupDialog = true
                             },
                             onClick = {
                                 HapticManager.light()
-                                if (!hasPattern) {
+                                if (selectedType != AppLockType.PATTERN || !hasPattern) {
                                     showPatternSetupDialog = true
-                                } else {
-                                    selectedType = AppLockType.PATTERN
                                 }
                             }
                         )
@@ -250,9 +434,10 @@ fun AppLockSelectionDialog(
                             title = languageViewModel.getString("lock_type_bio_pin"),
                             icon = Icons.Outlined.Fingerprint,
                             isSelected = selectedType == AppLockType.BIOMETRIC_OR_PIN,
-                            trailingAction = if (hasPin) "Change PIN" else null,
+                            trailingAction = if (selectedType == AppLockType.BIOMETRIC_OR_PIN && hasBioPin) "Change PIN" else null,
                             onTrailingActionClick = {
-                                pinSetupTargetLength = pinLength
+                                isBioPinSetup = true
+                                pinSetupTargetLength = bioPinLength
                                 showPinSetupDialog = true
                             },
                             onClick = {
@@ -270,53 +455,11 @@ fun AppLockSelectionDialog(
                                         showBiometricEnrollDialog = true
                                     }
                                     BiometricStatus.AVAILABLE -> {
-                                        if (!hasPin) {
-                                            selectedType = AppLockType.BIOMETRIC_OR_PIN
-                                            pinSetupTargetLength = 4
-                                            showPinSetupDialog = true
-                                        } else {
-                                            val act = context as? FragmentActivity
-                                            if (act != null) {
-                                                AppLockManager.authenticateWithBiometrics(
-                                                    activity = act,
-                                                    title = "Verify Biometrics",
-                                                    subtitle = "Touch fingerprint sensor or look at camera to register",
-                                                    negativeButtonText = "Cancel",
-                                                    onSuccess = {
-                                                        selectedType = AppLockType.BIOMETRIC_OR_PIN
-                                                        Toast.makeText(
-                                                            context,
-                                                            "Biometric registered successfully",
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
-                                                    },
-                                                    onError = { err ->
-                                                        Toast.makeText(
-                                                            context,
-                                                            err,
-                                                            Toast.LENGTH_SHORT
-                                                        ).show()
-                                                    }
-                                                )
-                                            } else {
-                                                selectedType = AppLockType.BIOMETRIC_OR_PIN
-                                            }
-                                        }
+                                        isBioPinSetup = true
+                                        pinSetupTargetLength = if (hasBioPin) bioPinLength else 4
+                                        showPinSetupDialog = true
                                     }
                                 }
-                            }
-                        )
-
-                        // 5. Device Lock (System Master PIN/Pattern + Biometrics)
-                        LockOptionItem(
-                            title = languageViewModel.getString("lock_type_device"),
-                            icon = Icons.Outlined.LockPerson,
-                            isSelected = selectedType == AppLockType.DEVICE_CREDENTIAL,
-                            trailingAction = null,
-                            onTrailingActionClick = null,
-                            onClick = {
-                                HapticManager.light()
-                                selectedType = AppLockType.DEVICE_CREDENTIAL
                             }
                         )
                     }
@@ -348,6 +491,7 @@ fun AppLockSelectionDialog(
                                     .clickable {
                                         HapticManager.light()
                                         selectedTimeout = timeout
+                                        AppLockManager.setAutoLockTimeout(context, timeout)
                                     },
                                 color = if (selectedTimeout == timeout) {
                                     MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
@@ -384,58 +528,12 @@ fun AppLockSelectionDialog(
                                         onClick = {
                                             HapticManager.light()
                                             selectedTimeout = timeout
+                                            AppLockManager.setAutoLockTimeout(context, timeout)
                                         }
                                     )
                                 }
                             }
                         }
-                    }
-                }
-
-                // Action Buttons: Cancel and Save (Only saves when Save is clicked)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    TactileOutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(languageViewModel.getString("btn_cancel"))
-                    }
-
-                    TactileButton(
-                        onClick = {
-                            if (selectedType == AppLockType.PIN_4 && (!hasPin || pinLength != 4)) {
-                                pinSetupTargetLength = 4
-                                showPinSetupDialog = true
-                                return@TactileButton
-                            }
-                            if (selectedType == AppLockType.PIN_6 && (!hasPin || pinLength != 6)) {
-                                pinSetupTargetLength = 6
-                                showPinSetupDialog = true
-                                return@TactileButton
-                            }
-                            if (selectedType == AppLockType.PATTERN && !hasPattern) {
-                                showPatternSetupDialog = true
-                                return@TactileButton
-                            }
-                            if (selectedType == AppLockType.BIOMETRIC_OR_PIN && !hasPin) {
-                                pinSetupTargetLength = 4
-                                showPinSetupDialog = true
-                                return@TactileButton
-                            }
-
-                            AppLockManager.setLockType(context, selectedType)
-                            AppLockManager.setAutoLockTimeout(context, selectedTimeout)
-                            onLockTypeChanged(selectedType)
-                            onDismiss()
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(languageViewModel.getString("btn_save"))
                     }
                 }
             }
@@ -447,34 +545,68 @@ fun AppLockSelectionDialog(
         PinSetupDialog(
             languageViewModel = languageViewModel,
             targetLength = pinSetupTargetLength,
-            onPinSetSuccess = {
-                hasPin = true
-                pinLength = pinSetupTargetLength
-                if (selectedType == AppLockType.BIOMETRIC_OR_PIN) {
+            allowLengthToggle = isBioPinSetup,
+            isBioPin = isBioPinSetup,
+            titlePrefix = if (isBioPinSetup) "Biometric" else null,
+            onPinSetSuccess = { lengthSet ->
+                if (isBioPinSetup) {
+                    hasBioPin = true
+                    bioPinLength = lengthSet
+                    hasPin = false
+                    hasPattern = false
                     val act = context as? FragmentActivity
                     if (act != null && AppLockManager.getBiometricStatus(context) == BiometricStatus.AVAILABLE) {
                         AppLockManager.authenticateWithBiometrics(
                             activity = act,
-                            title = "Verify Biometrics",
-                            subtitle = "Touch fingerprint sensor or look at camera to register",
-                            negativeButtonText = "Skip",
+                            title = "Register Fingerprint",
+                            subtitle = "Touch fingerprint sensor to register with Swift PDF",
+                            negativeButtonText = "Cancel",
                             onSuccess = {
                                 selectedType = AppLockType.BIOMETRIC_OR_PIN
+                                AppLockManager.setLockType(context, AppLockType.BIOMETRIC_OR_PIN)
+                                onLockTypeChanged(AppLockType.BIOMETRIC_OR_PIN)
+                                showPinSetupDialog = false
+                                showAddMethodDialog = false
+                                isBioPinSetup = false
                                 Toast.makeText(context, "Biometric registered successfully!", Toast.LENGTH_SHORT).show()
                             },
-                            onError = {
-                                selectedType = AppLockType.BIOMETRIC_OR_PIN
+                            onError = { err ->
+                                Toast.makeText(context, "Biometric registration failed: $err", Toast.LENGTH_SHORT).show()
+                                showPinSetupDialog = false
+                                isBioPinSetup = false
                             }
                         )
+                    } else {
+                        selectedType = AppLockType.BIOMETRIC_OR_PIN
+                        AppLockManager.setLockType(context, AppLockType.BIOMETRIC_OR_PIN)
+                        onLockTypeChanged(AppLockType.BIOMETRIC_OR_PIN)
+                        showPinSetupDialog = false
+                        showAddMethodDialog = false
+                        isBioPinSetup = false
                     }
-                } else if (pinSetupTargetLength == 6) {
-                    selectedType = AppLockType.PIN_6
                 } else {
-                    selectedType = AppLockType.PIN_4
+                    hasPin = true
+                    pinLength = lengthSet
+                    hasPattern = false
+                    hasBioPin = false
+                    val finalType = if (lengthSet == 6) AppLockType.PIN_6 else AppLockType.PIN_4
+                    selectedType = finalType
+                    AppLockManager.setLockType(context, finalType)
+                    onLockTypeChanged(finalType)
+                    showPinSetupDialog = false
+                    showAddMethodDialog = false
                 }
-                showPinSetupDialog = false
             },
-            onDismiss = { showPinSetupDialog = false }
+            onDismiss = {
+                showPinSetupDialog = false
+                isBioPinSetup = false
+                selectedType = AppLockManager.lockTypeFlow.value
+                hasPin = AppLockManager.hasPinSet(context)
+                pinLength = AppLockManager.getPinLength(context)
+                hasBioPin = AppLockManager.hasBioPinSet(context)
+                bioPinLength = AppLockManager.getBioPinLength(context)
+                hasPattern = AppLockManager.hasPatternSet(context)
+            }
         )
     }
 
@@ -483,10 +615,23 @@ fun AppLockSelectionDialog(
             languageViewModel = languageViewModel,
             onPatternSetSuccess = {
                 hasPattern = true
+                hasPin = false
+                hasBioPin = false
                 selectedType = AppLockType.PATTERN
+                AppLockManager.setLockType(context, AppLockType.PATTERN)
+                onLockTypeChanged(AppLockType.PATTERN)
                 showPatternSetupDialog = false
+                showAddMethodDialog = false
             },
-            onDismiss = { showPatternSetupDialog = false }
+            onDismiss = {
+                showPatternSetupDialog = false
+                selectedType = AppLockManager.lockTypeFlow.value
+                hasPin = AppLockManager.hasPinSet(context)
+                pinLength = AppLockManager.getPinLength(context)
+                hasBioPin = AppLockManager.hasBioPinSet(context)
+                bioPinLength = AppLockManager.getBioPinLength(context)
+                hasPattern = AppLockManager.hasPatternSet(context)
+            }
         )
     }
 
@@ -659,6 +804,67 @@ private fun LockOptionItem(
                     )
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun MethodSelectionItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable {
+                HapticManager.light()
+                onClick()
+            },
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
