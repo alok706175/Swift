@@ -264,28 +264,6 @@ fun AboutAppScreen(
                 )
             }
 
-            OutlinedButton(
-                onClick = {
-                    HapticManager.light()
-                    try {
-                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/alok706175/Swift"))
-                        context.startActivity(browserIntent)
-                    } catch (_: Exception) {}
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "GitHub Repository",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp
-                )
-            }
-
             // Footer
             Column(
                 modifier = Modifier
